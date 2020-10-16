@@ -1,0 +1,3282 @@
+---
+title: "Guillaume.data.2"
+author: "E.T."
+date: '2020-04-30'
+output: html_document
+---
+
+```{r}
+
+#Emilie's script for metagenomics by organism
+#========================================================
+
+
+
+```
+
+tax.fill to remove uncertae sedis, unclassified...
+
+```{r}
+library("RAM")
+
+pathDataAnGB <- "~/R_working_directory/OakwiltAnalysis/"
+
+dir.create(paste(pathDataAnGB, "taxFill/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+taxFillPathGB <- paste(pathDataAnGB, "taxFill/", sep = "")
+
+
+##############
+#            #
+#    ITS1F   #
+#            #
+############## works
+
+
+temp <- read.table(paste(pathDataAnGB, "GB_ITS1F.table.cut.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", 
+                      comment.char = "", 
+                      quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, colClasses=c("taxonomy"="character"))
+
+  temp$row.names <- NULL
+  temp <- tax.fill(temp, downstream=TRUE)
+  write.table(temp, file=paste(taxFillPathGB, "GB_ITS1F.table.taxfill.tsv", sep = ""),
+              append    = FALSE,
+              sep       = "\t",
+              row.names = FALSE,
+              quote = FALSE)
+  
+  
+ 
+
+##############
+#            #
+#    ITS2    #
+#            #
+############## works
+
+  
+```
+
+Create diversity directory and path. List your datasets for diversity indexes. Adds a bunch of columns in a new diversity metadata file.
+Indices obtained (in this specific order) are: Spec Number,  Simpson data,  Inv simpson data,	Shannon data,	Simpson eveness,	Shannon eveness,	Simpson true diversity,	shannon true diversity,	chao,	ACE.
+```{r}
+dir.create(paste(pathDataAnGB, "diversity/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+diversityPathGB <- paste(pathDataAnGB, "diversity/", sep = "")
+
+
+##############
+#            #
+#    ITS1F   #
+#            #
+############## works
+
+tabletemp <- read.table(paste(taxFillPathGB, "GB_ITS1F.table.taxfill.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("taxonomy"="character"))
+#tabletemp$row.names <- NULL if not using tXfilled tables you need it
+ 
+metatemp <-  read.table(paste(pathDataAnGB, "OWPlate1_ITS1F.meta.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE)
+
+#metatemp$row.names <- NULL
+
+rownames(metatemp) <- colnames(tabletemp)[-ncol(tabletemp)] #seems to work
+
+temp2 <- OTU.diversity(list(data=tabletemp), metatemp)
+
+  write.table(temp2, file=paste(diversityPathGB, "OWPlate1_ITS1F.meta.div.tsv", sep = ""),
+              append    = FALSE,
+              sep       = "\t",
+              row.names = FALSE,
+              quote=FALSE)
+
+##############
+#            #
+#    ITS2    #
+#            #
+############## works
+
+
+     
+```
+
+Whiskers plots (diversity)
+```{r}
+
+dir.create(paste(diversityPathGB, "diversityPlot/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+diversityPlotPathGB <- paste(diversityPathGB, "diversityPlot/", sep = "")
+
+dir.create(paste(diversityPathGB, "EvennessPlot/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+EvennessPlotPathGB <- paste(diversityPathGB, "EvennessPlot/", sep = "")
+
+
+
+##############
+#            #
+#    ITS1F   #
+#            #
+############## works
+
+
+tabletemp <- read.table(paste(taxFillPathGB, "GB_ITS1F.table.taxfill.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("taxonomy"="character"))
+#tabletemp$row.names <- NULL if not using tXfilled tables you need it
+ 
+metatemp <-  read.table(paste(diversityPathGB, "OWPlate1_ITS1F.meta.div.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE)
+
+metatemp$row.names <- NULL
+
+rownames(metatemp) <- colnames(tabletemp)[-ncol(tabletemp)] #seems to work
+
+
+#Simpson Evenness
+
+###Sample_Name
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Simpson.Evenness.Sample_Name.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Sample_Name"), indices = c("sim_even"), diversity.info=TRUE, compare="NULL", ylab="Simpson Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+  
+###TrapLocation  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Simpson.Evenness.TrapLocation.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("TrapLocation"), indices = c("sim_even"), diversity.info=TRUE, compare="NULL", ylab="Simpson Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+
+###CollectedLocation  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Simpson.Evenness.CollectedLocation.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("CollectedLocation"), indices = c("sim_even"), diversity.info=TRUE, compare="NULL", ylab="Simpson Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+####DistanceTrapGrums  
+  # Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Simpson.Evenness.DistanceTrapGrums.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("DistanceTrapGrums"), indices = c("sim_even"), diversity.info=TRUE, compare="NULL", ylab="Simpson Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+
+###SampleDate    
+  # Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Simpson.Evenness.SampleDate.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("SampleDate"), indices = c("sim_even"), diversity.info=TRUE, compare="NULL", ylab="Simpson Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+###Province  
+  # Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Simpson.Evenness.province.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Province"), indices = c("sim_even"), diversity.info=TRUE, compare="NULL", ylab="Simpson Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+###CollectionDate  
+  
+  # Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Simpson.Evenness.CollectionDate.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("CollectionDate"), indices = c("sim_even"), diversity.info=TRUE, compare="NULL", ylab="Simpson Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  
+#Shannon Evenness
+
+  
+###Sample type
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Shannon.Evenness.sample_type.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Sample_type"), indices = c("shan_even"), diversity.info=TRUE, compare="NULL", ylab="Shannon Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+  
+###Site  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Shannon.Evenness.site.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Site"), indices = c("shan_even"), diversity.info=TRUE, compare="NULL", ylab="Shannon Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+
+###Location  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Shannon.Evenness.location.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Location"), indices = c("shan_even"), diversity.info=TRUE, compare="NULL", ylab="Shannon Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+####Host_Species  
+  # Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Shannon.Evenness.Host_Species.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Host_Species"), indices = c("shan_even"), diversity.info=TRUE, compare="NULL", ylab="Shannon Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+
+###Pooled or not    
+  # Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Shannon.Evenness.pooled_not_pooled.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Pooled_NotPooled"), indices = c("shan_even"), diversity.info=TRUE, compare="NULL", ylab="Shannon Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+###Province  
+  # Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Shannon.Evenness.province.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Province"), indices = c("shan_even"), diversity.info=TRUE, compare="NULL", ylab="Shannon Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+###CollectionDate  
+  
+  # Open file-handle to get ready to make the png graph:
+  png(filename=paste(EvennessPlotPathGB, "ITS1F", ".Shannon.Evenness.CollectionDate.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("CollectionDate"), indices = c("shan_even"), diversity.info=TRUE, compare="NULL", ylab="Shannon Evenness", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+    
+  
+#Simpson True Diversity
+
+
+####Sample type  
+  # Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.True.Div.sample_type.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Sample_type"), indices = c("sim_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Simpson True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+
+####Site  
+
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.True.Div.site.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Site"), indices = c("sim_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Simpson True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+  
+#####Location
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.True.Div.location.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Location"), indices = c("sim_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Simpson True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()   
+    
+#####Host_Species
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.True.Div.Host_Species.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Host_Species"), indices = c("sim_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Simpson True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()     
+  
+#####Pooled or not
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.True.Div.Pooled_NotPooled.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Pooled_NotPooled"), indices = c("sim_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Simpson True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()    
+  
+#####Province
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.True.Div.Province.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Province"), indices = c("sim_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Simpson True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+  
+#####CollectionDate
+  
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.True.Div.CollectionDate.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("CollectionDate"), indices = c("sim_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Simpson True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()   
+
+      
+  
+#Shannon True Diversity
+
+
+####Sample type  
+  # Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.True.Div.sample_type.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Sample_type"), indices = c("shan_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Shannon True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+
+####Site  
+
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.True.Div.site.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Site"), indices = c("shan_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Shannon True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+  
+#####Location
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.True.Div.location.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Location"), indices = c("shan_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Shannon True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()   
+    
+#####Host_Species
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.True.Div.Host_Species.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Host_Species"), indices = c("shan_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Shannon True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()     
+  
+#####Pooled or not
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.True.Div.Pooled_NotPooled.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Pooled_NotPooled"), indices = c("shan_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Shannon True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()    
+  
+#####Province
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.True.Div.Province.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Province"), indices = c("shan_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Shannon True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+  
+#####CollectionDate
+  
+# Open file-handle to get ready to make the png graph:
+
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.True.Div.CollectionDate.png", sep = ""),
+      width = 1200, height = 600, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("CollectionDate"), indices = c("shan_trudiv"), diversity.info=TRUE, compare="NULL", ylab="Shannon True Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()   
+  
+####################################################  
+      
+#Simpson Diversity
+
+##### Sample Type
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.Div.sample_type.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Sample_type"), indices = c("sim"), diversity.info=TRUE, compare="NULL", ylab="Simpson Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+#####Site
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.Div.site.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Site"), indices = c("sim"), diversity.info=TRUE, compare="NULL", ylab="Simpson Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off() 
+  
+#####Location
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.Div.location.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Location"), indices = c("sim"), diversity.info=TRUE, compare="NULL", ylab="Simpson Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+
+########Host_Species
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.Div.Host_Species.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Host_Species"), indices = c("sim"), diversity.info=TRUE, compare="NULL", ylab="Simpson Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+
+#####Pooled_NotPooled
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.Div.Pooled_NotPooled.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Pooled_NotPooled"), indices = c("sim"), diversity.info=TRUE, compare="NULL", ylab="Simpson Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()    
+  
+####Province
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.Div.Province.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Province"), indices = c("sim"), diversity.info=TRUE, compare="NULL", ylab="Simpson Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()   
+
+#####CollectionDate
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Simpson.Div.CollectionDate.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("CollectionDate"), indices = c("sim"), diversity.info=TRUE, compare="NULL", ylab="Simpson Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()   
+  
+#############################
+#Shannon Diversity
+
+  
+##### Sample Type
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.Div.sample_type.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Sample_type"), indices = c("shan"), diversity.info=TRUE, compare="NULL", ylab="Shannon Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+  
+#####Site
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.Div.site.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Site"), indices = c("shan"), diversity.info=TRUE, compare="NULL", ylab="Shannon Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off() 
+  
+#####Location
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.Div.location.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Location"), indices = c("shan"), diversity.info=TRUE, compare="NULL", ylab="Shannon Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+
+########Host_Species
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.Div.Host_Species.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Host_Species"), indices = c("shan"), diversity.info=TRUE, compare="NULL", ylab="Shannon Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+
+#####Pooled_NotPooled
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.Div.Pooled_NotPooled.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Pooled_NotPooled"), indices = c("shan"), diversity.info=TRUE, compare="NULL", ylab="Shannon Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()    
+  
+####Province
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.Div.Province.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Province"), indices = c("shan"), diversity.info=TRUE, compare="NULL", ylab="Shannon Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()   
+
+#####CollectionDate
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS", ".Shannon.Div.CollectionDate.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("CollectionDate"), indices = c("shan"), diversity.info=TRUE, compare="NULL", ylab="Shannon Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()   
+    
+  
+#Simpson inverted Diversity ####NOT DONE FOR GB
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathMC, "ITS", ".Simpson.inv.Div.2.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("CollectionDate"), indices = c("invsim"), diversity.info=TRUE, compare="NULL", ylab="Simpson inv Div", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+
+
+#Species number
+
+####sample_type
+  # Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS1F", ".Species.nbr.Sample_type.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Sample_type"), indices = c("spec"), diversity.info=TRUE, compare="NULL", ylab="Species nb", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()
+
+#####site
+ # Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS1F", ".Species.nbr.Site.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Site"), indices = c("spec"), diversity.info=TRUE, compare="NULL", ylab="Species nb", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+  
+
+#####location
+ # Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS1F", ".Species.nbr.Location.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Location"), indices = c("spec"), diversity.info=TRUE, compare="NULL", ylab="Species nb", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+    
+#####Host_Species
+ # Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS1F", ".Species.nbr.Host_Species.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Host_Species"), indices = c("spec"), diversity.info=TRUE, compare="NULL", ylab="Species nb", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+  
+  
+###Pooled_NotPooled    
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS1F", ".Species.nbr.Pooled_NotPooled.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Pooled_NotPooled"), indices = c("spec"), diversity.info=TRUE, compare="NULL", ylab="Species nb", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()  
+      
+
+###Province   
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS1F", ".Species.nbr.Province.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("Province"), indices = c("spec"), diversity.info=TRUE, compare="NULL", ylab="Species nb", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()    
+  
+  
+###CollectionDate
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(diversityPlotPathGB, "ITS1F", ".Species.nbr.CollectionDate.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+myGroup.diversity(list(data=tabletemp), metatemp, factors = c("CollectionDate"), indices = c("spec"), diversity.info=TRUE, compare="NULL", ylab="Species nb", facet.x.cex = "10", facet.y.cex = "10")
+
+# Close the png graph file handle:
+  dev.off()    
+        
+##############
+#            #
+#    ITS2    #
+#            #
+############## works
+  
+
+    
+    
+```
+
+
+Rarefy your tables
+```{r}
+
+dir.create(paste(pathDataAnGB, "rarefaction/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+
+RarefactionPathGB <- paste(pathDataAnGB, "rarefaction/", sep = "")
+
+
+
+##############
+#            #
+#    ITS1F   #
+#            #
+############## works
+
+temp <-  read.table(paste(pathDataAnGB, "GB_ITS1F.table.cut.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("row.names"="character", "taxonomy"="character"))
+  temp$row.names <- NULL 
+
+rrf <- OTU.rarefy(list(data=temp), sample=NULL)
+# Write out the dataframe:
+  write.table(rrf, file=paste(RarefactionPathGB, "ITS1F.rarefy.tsv", sep = ""),
+                               append    = FALSE,
+                               sep       = "\t",
+                               row.names = FALSE,
+                               quote=FALSE)
+
+  
+temp2 <-  read.table(paste(pathDataAnGB, "GB_ITS1F.table.cut.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("taxonomy"="character"))
+temp2$row.names <- NULL
+temp2$taxonomy <- NULL
+
+ 
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(RarefactionPathGB, "ITS1F", ".RAREFplot.png", sep = ""),
+      width = 1200, height = 400, units = "px")
+
+rrfPLOT <- rarecurve(temp2, step =10, xlab = "Sequence nb per sample", ylab = "Species OTUs") 
+
+# Close the png graph file handle:
+  dev.off()
+  
+##############
+#            #
+#    ITS2    #
+#            #
+############## works
+
+
+  
+```  
+   ##TaxAbund
+### group.abund.Taxa
+# 1. generate the list of taxa desired with core taxa, then generate the plots with group.abund.Taxa
+```{r}   
+ 
+
+library("RAM")
+
+# make new directory:
+
+dir.create(paste(pathDataAnGB, "groupTaxaBarPlot/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+
+taxaBarPlotPathGB <- paste(pathDataAnGB, "groupTaxaBarPlot/", sep = "")
+
+
+##############
+#            #
+#    ITS1F   #
+#            #
+##############
+
+tabletemp <-  read.table(paste(taxFillPathGB, "GB_ITS1F.table.taxfill.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("row.names"="character","taxonomy"="character"))
+  
+tabletemp$row.names <- NULL 
+  
+metatemp <-  read.table(paste(pathDataAnGB, "OWPlate1_ITS1F.meta.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE)
+
+
+metatemp$row.names <- NULL 
+rownames(metatemp) <- colnames(tabletemp)[-ncol(tabletemp)] #seems to work  
+
+#CollectedLocation
+#species_all 
+
+coreTaxaITSCollectedLocation <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "s", drop.unclassified = FALSE, meta.factor = "CollectedLocation", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".species.all.CollectedLocation.png", sep = ""),
+      width = 10000, height = 10000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "s",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "CollectedLocation",
+                    taxa = coreTaxaITSCollectedLocation,
+                    main = "Species_all")
+                
+# Close the png graph file handle:
+  dev.off()
+
+#genera_all
+
+coreTaxaITSCollectedLocation <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "CollectedLocation", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".genera.all.CollectedLocation.png", sep = ""),
+      width = 10000, height = 20000, units = "px", res = 300)
+
+MyGroup.abund.taxa.version2(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "g",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "CollectedLocation",
+                    taxa = coreTaxaITSCollectedLocation,
+                    main = "Genera_all")
+                
+# Close the png graph file handle:
+  dev.off() 
+  
+  
+#family_all
+
+coreTaxaITSsampletype <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "f", drop.unclassified = FALSE, meta.factor = "Sample_type", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".family.Sample_type.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "f",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Sample_type",
+                    taxa = coreTaxaITSsampletype,
+                    main = "Family_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+  
+ #order_all
+
+coreTaxaITSsampletypw <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "o", drop.unclassified = FALSE, meta.factor = "Sample_type", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".order.all.sample_type.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "o",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Sample_type",
+                    taxa = coreTaxaITSsampletypw,
+                    main = "Order_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+   
+  
+ #class_all
+
+coreTaxaITSdate <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "c", drop.unclassified = FALSE, meta.factor = "CollectionDate", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".class.all.2.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "c",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "CollectionDate",
+                    taxa = coreTaxaITSdate,
+                    main = "Class_all")
+                
+# Close the png graph file handle:
+  dev.off()     
+  
+ #phyla_all
+
+coreTaxaITSdate <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "p", drop.unclassified = FALSE, meta.factor = "CollectionDate", percent = 0, number=5)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".phyla.all.2.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "p",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "CollectionDate",
+                    taxa = coreTaxaITSdate,
+                    main = "phyla_all")
+                
+# Close the png graph file handle:
+  dev.off() 
+  
+  
+######Site
+  
+#genera_all
+
+coreTaxaITSSite <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Site", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".genera.all.site.png", sep = ""),
+      width = 10000, height = 20000, units = "px", res = 300)
+
+MyGroup.abund.taxa.version2(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "g",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Site",
+                    taxa = coreTaxaITSSite,
+                    main = "Genera_all")
+                
+# Close the png graph file handle:
+  dev.off() 
+  
+  
+#family_all
+
+coreTaxaITSsite <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "f", drop.unclassified = FALSE, meta.factor = "Site", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".family.Site.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "f",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Site",
+                    taxa = coreTaxaITSsite,
+                    main = "Family_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+  
+ #order_all
+
+coreTaxaITSsite <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "o", drop.unclassified = FALSE, meta.factor = "Site", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".order.all.site.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "o",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Site",
+                    taxa = coreTaxaITSsite,
+                    main = "Order_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+     
+
+########
+  
+######Location
+  
+#genera_all
+
+coreTaxaITSlocation <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Location", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".genera.all.location.png", sep = ""),
+      width = 10000, height = 20000, units = "px", res = 300)
+
+MyGroup.abund.taxa.version2(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "g",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Location",
+                    taxa = coreTaxaITSlocation,
+                    main = "Genera_all")
+                
+# Close the png graph file handle:
+  dev.off() 
+  
+  
+#family_all
+
+coreTaxaITSlocation <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "f", drop.unclassified = FALSE, meta.factor = "Location", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".family.Location.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "f",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Location",
+                    taxa = coreTaxaITSlocation,
+                    main = "Family_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+  
+ #order_all
+
+coreTaxaITSLocation <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "o", drop.unclassified = FALSE, meta.factor = "Location", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".order.all.location.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "o",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Location",
+                    taxa = coreTaxaITSLocation,
+                    main = "Order_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+       
+ 
+######Host_Species
+  
+#genera_all
+
+coreTaxaITShost <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Host_Species", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".genera.all.Host_Species.png", sep = ""),
+      width = 10000, height = 20000, units = "px", res = 300)
+
+MyGroup.abund.taxa.version2(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "g",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Host_Species",
+                    taxa = coreTaxaITShost,
+                    main = "Genera_all")
+                
+# Close the png graph file handle:
+  dev.off() 
+  
+  
+#family_all
+
+coreTaxaITShost <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "f", drop.unclassified = FALSE, meta.factor = "Host_Species", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".family.Host_Species.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "f",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Host_Species",
+                    taxa = coreTaxaITShost,
+                    main = "Family_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+  
+ #order_all
+
+coreTaxaITShost <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "o", drop.unclassified = FALSE, meta.factor = "Host_Species", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".order.all.Host_Species.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "o",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Host_Species",
+                    taxa = coreTaxaITShost,
+                    main = "Order_all")
+                
+# Close the png graph file handle:
+  dev.off()     
+
+  
+############Pooled_NotPooled
+  
+  
+#genera_all
+
+coreTaxaITSpool <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Pooled_NotPooled", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".genera.all.Pooled_NotPooled.png", sep = ""),
+      width = 10000, height = 20000, units = "px", res = 300)
+
+MyGroup.abund.taxa.version2(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "g",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Pooled_NotPooled",
+                    taxa = coreTaxaITSpool,
+                    main = "Genera_all")
+                
+# Close the png graph file handle:
+  dev.off() 
+  
+  
+#family_all
+
+coreTaxaITSpool <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "f", drop.unclassified = FALSE, meta.factor = "Pooled_NotPooled", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".family.Pooled_NotPooled.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "f",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Pooled_NotPooled",
+                    taxa = coreTaxaITSpool,
+                    main = "Family_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+  
+ #order_all
+
+coreTaxaITSpool <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "o", drop.unclassified = FALSE, meta.factor = "Pooled_NotPooled", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".order.all.Pooled_NotPooled.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "o",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Pooled_NotPooled",
+                    taxa = coreTaxaITSpool,
+                    main = "Order_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+       
+ 
+######Host_Species
+  
+#genera_all
+
+coreTaxaITShost <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Host_Species", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".genera.all.Host_Species.png", sep = ""),
+      width = 10000, height = 20000, units = "px", res = 300)
+
+MyGroup.abund.taxa.version2(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "g",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Host_Species",
+                    taxa = coreTaxaITShost,
+                    main = "Genera_all")
+                
+# Close the png graph file handle:
+  dev.off() 
+  
+  
+#family_all
+
+coreTaxaITShost <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "f", drop.unclassified = FALSE, meta.factor = "Host_Species", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".family.Host_Species.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "f",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Host_Species",
+                    taxa = coreTaxaITShost,
+                    main = "Family_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+  
+ #order_all
+
+coreTaxaITShost <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "o", drop.unclassified = FALSE, meta.factor = "Host_Species", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".order.all.Host_Species.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "o",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Host_Species",
+                    taxa = coreTaxaITShost,
+                    main = "Order_all")
+                
+# Close the png graph file handle:
+  dev.off()       
+  
+#####Province
+  
+#genera_all
+
+coreTaxaITSprov <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Province", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".genera.all.Province.png", sep = ""),
+      width = 10000, height = 20000, units = "px", res = 300)
+
+MyGroup.abund.taxa.version2(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "g",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Province",
+                    taxa = coreTaxaITSprov,
+                    main = "Genera_all")
+                
+# Close the png graph file handle:
+  dev.off() 
+  
+  
+#family_all
+
+coreTaxaITSprov <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "f", drop.unclassified = FALSE, meta.factor = "Province", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".family.Province.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "f",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Province",
+                    taxa = coreTaxaITSprov,
+                    main = "Family_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+  
+ #order_all
+
+coreTaxaITSprov <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "o", drop.unclassified = FALSE, meta.factor = "Province", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".order.all.Province.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "o",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "Province",
+                    taxa = coreTaxaITSprov,
+                    main = "Order_all")
+                
+# Close the png graph file handle:
+  dev.off()       
+
+#####CollectionDate
+  
+#genera_all
+
+coreTaxaITScoll <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "CollectionDate", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".genera.all.CollectionDate.png", sep = ""),
+      width = 10000, height = 20000, units = "px", res = 300)
+
+MyGroup.abund.taxa.version2(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "g",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "CollectionDate",
+                    taxa = coreTaxaITScoll,
+                    main = "Genera_all")
+                
+# Close the png graph file handle:
+  dev.off() 
+  
+  
+#family_all
+
+coreTaxaITScoll <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "f", drop.unclassified = FALSE, meta.factor = "CollectionDate", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".family.CollectionDate.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "f",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "CollectionDate",
+                    taxa = coreTaxaITScoll,
+                    main = "Family_all")
+                
+# Close the png graph file handle:
+  dev.off()   
+  
+ #order_all
+
+coreTaxaITScoll <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "o", drop.unclassified = FALSE, meta.factor = "CollectionDate", percent = 0)
+
+#taxaDate <- coreTaxaITSdate$data$CollectionDate$taxa
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(taxaBarPlotPathGB, "ITS1F", ".order.all.CollectionDate.png", sep = ""),
+      width = 3000, height = 2000, units = "px", res = 100)
+
+myGroup.abund.Taxa(data = list(data = tabletemp),
+                    is.OTU = TRUE,
+                    rank = "o",    
+                    drop.unclassified = FALSE,
+                    meta = metatemp,
+                    meta.factor = "CollectionDate",
+                    taxa = coreTaxaITScoll,
+                    main = "Order_all")
+                
+# Close the png graph file handle:
+  dev.off()       
+      
+      
+              
+##############
+#            #
+#    ITS2    #
+#            #
+############## works
+  
+    
+  
+```
+  # GroupTaxabar
+
+```{r}
+
+dir.create(paste(pathDataAnGB, "groupAbundnbBarPlot/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+
+abundNbBarPlotPathGB <- paste(pathDataAnGB, "groupAbundnbBarPlot/", sep = "")
+
+##############
+#            #
+#    ITS1F   #
+#            #
+############## works
+
+tabletemp <-  read.table(paste(taxFillPathGB, "GB_ITS1F.table.taxfill.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("taxonomy"="character"))
+
+tabletemp$row.names <- NULL 
+ 
+metatemp <-  read.table(paste(pathDataAnGB, "OWPlate1_ITS1F.meta.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE)
+
+metatemp$row.names <- NULL
+
+rownames(metatemp) <- colnames(tabletemp)[-ncol(tabletemp)] #seems to work
+
+
+###CollectedLocation
+#species
+# Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.species.CollectedLocation.top50.png", sep = ""),
+      width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="s", top = 50, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 counts of taxonomic groups at the species level", meta = metatemp, meta.factor = c("CollectedLocation"))
+
+# Close the png graph file handle:
+  dev.off()
+
+
+  #genus
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.genera.top15.CollectedLocation.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="g", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the genus level ", meta = metatemp, meta.factor = c("CollectedLocation"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+  ########testmorespecific
+  #CollectedLocation-Michigan
+#species
+# Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.species.CollectedLocation-Michigan.top30.png", sep = ""),
+      width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="s", top = 30, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 30 counts of taxonomic groups at the species level", meta = metatemp, meta.factor = c("CollectedLocation"))
+
+# Close the png graph file handle:
+  dev.off()
+
+  
+  
+  
+  #family
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.family.top15.Sample_type.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="f", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the family level", meta = metatemp, meta.factor = c("Sample_type"))
+
+# Close the png graph file handle:
+  dev.off()
+   
+
+   #order
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.order.top10.Sample_type.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="o", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the order level", meta = metatemp, meta.factor = c("Sample_type"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  
+ #class
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.class.top10.Sample_type.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="c", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the class level", meta = metatemp, meta.factor = c("Sample_type"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  #phyla
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.phyla.top5.Sample_type.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="p", top = 5, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 OTU abundance (count) at the phyla level ", meta = metatemp, meta.factor = c("Sample_type"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+#####site
+  
+#species
+# Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.species.Site.top30.png", sep = ""),
+      width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="s", top = 30, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 30 counts of taxonomic groups at the species level", meta = metatemp, meta.factor = c("Site"))
+
+# Close the png graph file handle:
+  dev.off()
+
+
+  #genus
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.genera.top15.Site.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="g", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the genus level ", meta = metatemp, meta.factor = c("Site"))
+
+# Close the png graph file handle:
+  dev.off()
+
+  #family
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.family.top15.Site.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="f", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the family level", meta = metatemp, meta.factor = c("Site"))
+
+# Close the png graph file handle:
+  dev.off()
+   
+
+   #order
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.order.top10.Site.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="o", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the order level", meta = metatemp, meta.factor = c("Site"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  
+ #class
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.class.top10.Site.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="c", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the class level", meta = metatemp, meta.factor = c("Site"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  #phyla
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.phyla.top5.Site.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="p", top = 5, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 OTU abundance (count) at the phyla level ", meta = metatemp, meta.factor = c("Site"))
+
+# Close the png graph file handle:
+  dev.off()  
+  
+#####Location
+  
+#species
+# Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.species.Location.top30.png", sep = ""),
+      width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="s", top = 30, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 30 counts of taxonomic groups at the species level", meta = metatemp, meta.factor = c("Location"))
+
+# Close the png graph file handle:
+  dev.off()
+
+
+  #genus
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.genera.top15.Location.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="g", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the genus level ", meta = metatemp, meta.factor = c("Location"))
+
+# Close the png graph file handle:
+  dev.off()
+
+  #family
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.family.top15.Location.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="f", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the family level", meta = metatemp, meta.factor = c("Location"))
+
+# Close the png graph file handle:
+  dev.off()
+   
+
+   #order
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.order.top10.Location.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="o", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the order level", meta = metatemp, meta.factor = c("Location"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  
+ #class
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.class.top10.Location.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="c", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the class level", meta = metatemp, meta.factor = c("Location"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  #phyla
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.phyla.top5.Location.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="p", top = 5, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 OTU abundance (count) at the phyla level ", meta = metatemp, meta.factor = c("Location"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+######Host_Species
+  
+#species
+# Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.species.Host_Species.top30.png", sep = ""),
+      width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="s", top = 30, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 30 counts of taxonomic groups at the species level", meta = metatemp, meta.factor = c("Host_Species"))
+
+# Close the png graph file handle:
+  dev.off()
+
+
+  #genus
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.genera.top15.Host_Species.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="g", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the genus level ", meta = metatemp, meta.factor = c("Host_Species"))
+
+# Close the png graph file handle:
+  dev.off()
+
+  #family
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.family.top15.Host_Species.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="f", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the family level", meta = metatemp, meta.factor = c("Host_Species"))
+
+# Close the png graph file handle:
+  dev.off()
+   
+
+   #order
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.order.top10.Host_Species.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="o", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the order level", meta = metatemp, meta.factor = c("Host_Species"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  
+ #class
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.class.top10.Host_Species.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="c", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the class level", meta = metatemp, meta.factor = c("Host_Species"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  #phyla
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.phyla.top5.Host_Species.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="p", top = 5, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 OTU abundance (count) at the phyla level ", meta = metatemp, meta.factor = c("Host_Species"))
+
+# Close the png graph file handle:
+  dev.off()  
+  
+#####Pooled_NotPooled
+  
+#species
+# Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.species.Pooled_NotPooled.top30.png", sep = ""),
+      width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="s", top = 30, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 30 counts of taxonomic groups at the species level", meta = metatemp, meta.factor = c("Pooled_NotPooled"))
+
+# Close the png graph file handle:
+  dev.off()
+
+
+  #genus
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.genera.top15.Pooled_NotPooled.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="g", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the genus level ", meta = metatemp, meta.factor = c("Pooled_NotPooled"))
+
+# Close the png graph file handle:
+  dev.off()
+
+  #family
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.family.top15.Pooled_NotPooled.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="f", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the family level", meta = metatemp, meta.factor = c("Pooled_NotPooled"))
+
+# Close the png graph file handle:
+  dev.off()
+   
+
+   #order
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.order.top10.Pooled_NotPooled.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="o", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the order level", meta = metatemp, meta.factor = c("Pooled_NotPooled"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  
+ #class
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.class.top10.Pooled_NotPooled.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="c", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the class level", meta = metatemp, meta.factor = c("Pooled_NotPooled"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  #phyla
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.phyla.top5.Pooled_NotPooled.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="p", top = 5, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 OTU abundance (count) at the phyla level ", meta = metatemp, meta.factor = c("Pooled_NotPooled"))
+
+# Close the png graph file handle:
+  dev.off()  
+  
+########Province
+  
+#species
+# Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.species.Province.top30.png", sep = ""),
+      width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="s", top = 30, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 30 counts of taxonomic groups at the species level", meta = metatemp, meta.factor = c("Province"))
+
+# Close the png graph file handle:
+  dev.off()
+
+
+  #genus
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.genera.top15.Province.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="g", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the genus level ", meta = metatemp, meta.factor = c("Province"))
+
+# Close the png graph file handle:
+  dev.off()
+
+  #family
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.family.top15.Province.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="f", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the family level", meta = metatemp, meta.factor = c("Province"))
+
+# Close the png graph file handle:
+  dev.off()
+   
+
+   #order
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.order.top10.Province.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="o", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the order level", meta = metatemp, meta.factor = c("Province"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  
+ #class
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.class.top10.Province.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="c", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the class level", meta = metatemp, meta.factor = c("Province"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  #phyla
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.phyla.top5.Province.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="p", top = 5, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 OTU abundance (count) at the phyla level ", meta = metatemp, meta.factor = c("Province"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+########CollectionDate
+  
+  
+#species
+# Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.species.CollectionDate.top30.png", sep = ""),
+      width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="s", top = 30, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 30 counts of taxonomic groups at the species level", meta = metatemp, meta.factor = c("CollectionDate"))
+
+# Close the png graph file handle:
+  dev.off()
+
+
+  #genus
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.genera.top15.CollectionDate.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="g", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the genus level ", meta = metatemp, meta.factor = c("CollectionDate"))
+
+# Close the png graph file handle:
+  dev.off()
+
+  #family
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.family.top15.CollectionDate.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="f", top = 15, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 15 counts of taxonomic groups at the family level", meta = metatemp, meta.factor = c("CollectionDate"))
+
+# Close the png graph file handle:
+  dev.off()
+   
+
+   #order
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.order.top10.CollectionDate.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="o", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the order level", meta = metatemp, meta.factor = c("CollectionDate"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  
+ #class
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.class.top10.CollectionDate.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="c", top = 10, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 10 counts of taxonomic groups at the class level", meta = metatemp, meta.factor = c("CollectionDate"))
+
+# Close the png graph file handle:
+  dev.off()
+  
+
+  #phyla
+  # Open file-handle to get ready to make the plot:
+  png(filename=paste(abundNbBarPlotPathGB, "ITS1F", ".gr.abund.phyla.top5.CollectionDate.png", sep = ""),
+      width = 3000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tabletemp)), rank="p", top = 5, count =  TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 OTU abundance (count) at the phyla level ", meta = metatemp, meta.factor = c("CollectionDate"))
+
+# Close the png graph file handle:
+  dev.off()  
+##############
+#            #
+#    ITS2    #
+#            #
+############## works
+
+
+  
+```
+
+
+
+```{r}
+dir.create(paste(pathDataAnGB, "PCoAPlot/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+
+PcoAPlotPathGB <- paste(pathDataAnGB, "PCoAPlot/", sep = "")
+
+##############
+#            #
+#    ITS1F   #
+#            #
+##############
+
+tabletemp <- read.table(paste(pathDataAnGB, "GB_ITS1F.table.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, row.names = 1)
+tabletemp$row.names <- NULL #if not using tXfilled tables you need it
+ 
+metatemp <-  read.table(paste(pathDataAnGB, "GB_ITS1F.meta.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE)
+
+
+tabletemp$row.names <- NULL #if not using tXfilled tables you need it
+ 
+
+
+metatemp$row.names <- NULL
+
+rownames(metatemp) <- colnames(tabletemp)[-ncol(tabletemp)] #seems to work
+
+#CollectionDate
+
+myvec <- c("CollectionDate")
+
+names(myvec) <- "CollectionDate"
+
+#either euclidean and normalize or hellinger and bray or jaccard (pick the one that represent more % of your data)
+#stand.method	One of "total", "max", "freq", "normalize", "range", "standardize", "pa", "chi.square", "hellinger" or "log"
+#dist.method	one of "manhattan", "euclidean", "canberra", "bray", "kulczynski", "jaccard", "gower", "altGower","morisita", "horn", "mountford", "raup", "binomial", "chao", or "cao"
+
+# Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.dist.euc.standnorm.CollectionDate.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "normalize", dist.method = "euclidean", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off() 
+ 
+  # Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.distHell.standBray.CollectionDate.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "hellinger", dist.method = "bray", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off() 
+  
+##Sample_type
+  
+
+myvec <- c("Sample_type")
+
+names(myvec) <- "Sample_type"
+
+#either euclidean and normalize or hellinger and bray or jaccard (pick the one that represent more % of your data)
+#stand.method One of "total", "max", "freq", "normalize", "range", "standardize", "pa", "chi.square", "hellinger" or "log"
+#dist.method  one of "manhattan", "euclidean", "canberra", "bray", "kulczynski", "jaccard", "gower", "altGower","morisita", "horn", "mountford", "raup", "binomial", "chao", or "cao"
+
+# Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.dist.euc.standnorm.Sample_type.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "normalize", dist.method = "euclidean", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off() 
+ 
+  # Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.distHell.standBray.Sample_type.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "hellinger", dist.method = "bray", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off()   
+  
+#######Site
+
+myvec <- c("Site")
+
+names(myvec) <- "Site"
+
+#either euclidean and normalize or hellinger and bray or jaccard (pick the one that represent more % of your data)
+#stand.method One of "total", "max", "freq", "normalize", "range", "standardize", "pa", "chi.square", "hellinger" or "log"
+#dist.method  one of "manhattan", "euclidean", "canberra", "bray", "kulczynski", "jaccard", "gower", "altGower","morisita", "horn", "mountford", "raup", "binomial", "chao", or "cao"
+
+# Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.dist.euc.standnorm.Site.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "normalize", dist.method = "euclidean", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off() 
+ 
+  # Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.distHell.standBray.Site.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "hellinger", dist.method = "bray", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off()   
+  
+######Location
+
+myvec <- c("Location")
+
+names(myvec) <- "Location"
+
+#either euclidean and normalize or hellinger and bray or jaccard (pick the one that represent more % of your data)
+#stand.method One of "total", "max", "freq", "normalize", "range", "standardize", "pa", "chi.square", "hellinger" or "log"
+#dist.method  one of "manhattan", "euclidean", "canberra", "bray", "kulczynski", "jaccard", "gower", "altGower","morisita", "horn", "mountford", "raup", "binomial", "chao", or "cao"
+
+# Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.dist.euc.standnorm.Location.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "normalize", dist.method = "euclidean", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off() 
+ 
+  # Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.distHell.standBray.Location.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "hellinger", dist.method = "bray", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off()   
+  
+######Host_Species
+
+myvec <- c("Host_Species")
+
+names(myvec) <- "Host_Species"
+
+#either euclidean and normalize or hellinger and bray or jaccard (pick the one that represent more % of your data)
+#stand.method One of "total", "max", "freq", "normalize", "range", "standardize", "pa", "chi.square", "hellinger" or "log"
+#dist.method  one of "manhattan", "euclidean", "canberra", "bray", "kulczynski", "jaccard", "gower", "altGower","morisita", "horn", "mountford", "raup", "binomial", "chao", or "cao"
+
+# Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.dist.euc.standnorm.Host_Species.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "normalize", dist.method = "euclidean", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off() 
+ 
+  # Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.distHell.standBray.Host_Species.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "hellinger", dist.method = "bray", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off()   
+  
+######Pooled_NotPooled
+
+myvec <- c("Pooled_NotPooled")
+
+names(myvec) <- "Pooled_NotPooled"
+
+#either euclidean and normalize or hellinger and bray or jaccard (pick the one that represent more % of your data)
+#stand.method One of "total", "max", "freq", "normalize", "range", "standardize", "pa", "chi.square", "hellinger" or "log"
+#dist.method  one of "manhattan", "euclidean", "canberra", "bray", "kulczynski", "jaccard", "gower", "altGower","morisita", "horn", "mountford", "raup", "binomial", "chao", or "cao"
+
+# Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.dist.euc.standnorm.Pooled_NotPooled.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "normalize", dist.method = "euclidean", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off() 
+ 
+  # Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.distHell.standBray.Pooled_NotPooled.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "hellinger", dist.method = "bray", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off()   
+  
+######Province
+
+myvec <- c("Province")
+
+names(myvec) <- "Province"
+
+#either euclidean and normalize or hellinger and bray or jaccard (pick the one that represent more % of your data)
+#stand.method One of "total", "max", "freq", "normalize", "range", "standardize", "pa", "chi.square", "hellinger" or "log"
+#dist.method  one of "manhattan", "euclidean", "canberra", "bray", "kulczynski", "jaccard", "gower", "altGower","morisita", "horn", "mountford", "raup", "binomial", "chao", or "cao"
+
+# Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.dist.euc.standnorm.Province.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "normalize", dist.method = "euclidean", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off() 
+ 
+  # Open file-handle to get ready to make the png graph:
+png(filename=paste(PcoAPlotPathGB, "ITS1F", ".PCOA.genera.top.100.distHell.standBray.Province.png", sep = ""),
+      width = 1200, height = 1000, units = "px", res = 100)
+
+pcoa.plot(data = tabletemp, is.OTU = TRUE, meta = metatemp, factors = (myvec), rank = "g", stand.method = "hellinger", dist.method = "bray", sample.labels = FALSE, top = 100, ellipse = FALSE, main = "PCOA for top 100 Fungal genera", ggplot2 = TRUE, bw = FALSE)
+
+# Close the png graph file handle:
+  dev.off()   
+  
+##############
+#            #
+#    ITS2    #
+#            #
+############## works
+  
+
+    
+```
+
+
+#plot Venn Venn Plot
+
+```{r}
+dir.create(paste(pathDataAnGB, "VennPlot/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+
+VennPathGB <- paste(pathDataAnGB, "VennPlot/", sep = "")
+
+##############
+#            #
+#    ITS1F   #
+#            #
+############## 
+
+tabletemp <-  read.table(paste(taxFillPathGB, "GB_ITS1F.table.taxfill.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("taxonomy"="character"))
+
+tabletemp$row.names <- NULL 
+ 
+metatemp <-  read.table(paste(pathDataAnGB, "OWPlate1_ITS1F.meta.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE)
+
+
+metatemp$row.names <- NULL 
+rownames(metatemp) <- colnames(tabletemp)[-ncol(tabletemp)] #seems to work  
+
+#species
+coreTaxaITSdate <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "s", drop.unclassified = FALSE, meta.factor = "CollectedLocation", percent = 0)
+
+VentaxaCollectedLocation <- coreTaxaITSdate$data$'Michigan'$taxa
+VentaxaCollectedLocation2 <- coreTaxaITSdate$data$'Sarnia'$taxa
+VentaxaCollectedLocation3<- coreTaxaITSdate$data$'Louiseville'$taxa
+#VentaxaNA <- coreTaxaITSdate$data$"NA"$taxa
+#Ventaxajun2 <- coreTaxaITSdate$data$'2017-06-13'$taxa
+#Ventaxajun3 <- coreTaxaITSdate$data$'2017-06-19'$taxa
+#Ventaxajun4 <- coreTaxaITSdate$data$'2017-06-28'$taxa
+#Ventaxajui1 <- coreTaxaITSdate$data$'2017-07-12'$taxa
+
+#taxamay <- c(unique(coreTaxaITSdate$data$'2017-05-27'$taxa, coreTaxaITSdate$data$'2017-05-17'$taxa))
+#taxajuneAll <- c(unique(fromLast = TRUE, coreTaxaITSdate$data$'2017-06-02'$taxa, #coreTaxaITSdate$data$'2017-06-13'$taxa, coreTaxaITSdate$data$'2017-06-19'$taxa, #coreTaxaITSdate$data$'2017-06-28'$taxa))
+#taxajuly <- coreTaxaITSdate$data$'2017-07-12'$taxa
+
+
+             
+
+taxVectorCollectedLocation <- list(VentaxaCollectedLocation, VentaxaCollectedLocation2,VentaxaCollectedLocation3)
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.species.CollectedLocation.png", sep = ""),
+      width = 1800, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorCollectedLocation, cat.cex =3, cex = 3, label = FALSE, lab.cex = 1, fill = c("pink", "purple"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#genera
+coreTaxaITSdate <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "CollectionDate", percent = 0)
+
+Ventaxamay1 <- coreTaxaITSdate$data$'2019-05-08'$taxa
+Ventaxamay2 <- coreTaxaITSdate$data$'2019-05-15'$taxa
+Ventaxajul15<- coreTaxaITSdate$data$'2012-07-15'$taxa
+             
+taxVectorDate <- list(May_08_2019=Ventaxamay1, May_15_2019=Ventaxamay2,July_15_2012=Ventaxajul15)
+
+#colours
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.CollectionDate.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorDate, cat.cex =3, cex = 3, label = FALSE, lab.cex = 1, fill = c("darkorchid1", "aquamarine1"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#black and white a.k.a grey
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.CollectionDate.bw.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorDate, cat.cex =3, cex = 3, label = FALSE, lab.cex = 3, fill = c("grey10", "grey40"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()  
+
+    
+######Sample_type  
+  
+#species
+coreTaxaITStype <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "s", drop.unclassified = FALSE, meta.factor = "Sample_type", percent = 0)
+
+Ventaxabee <- coreTaxaITStype$data$'Bee'$taxa
+Ventaxabread <- coreTaxaITStype$data$'Bread'$taxa
+Ventaxaforagers <- coreTaxaITStype$data$'Foragers'$taxa
+Ventaxaleaf <- coreTaxaITStype$data$'Leaf'$taxa
+Ventaxapollen <- coreTaxaITStype$data$'Pollen'$taxa
+
+             
+taxVectortype <- list(Bee=Ventaxabee, Bread=Ventaxabread, Foragers=Ventaxaforagers, Leaf=Ventaxaleaf, Pollen=Ventaxapollen)
+
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.species.Sample_type.png", sep = ""),
+      width = 2900, height = 2400, units = "px", res = 100)
+
+group.venn(vectors = taxVectortype, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("pink", "purple", "orange", "green", "yellow"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#genera
+coreTaxaITStype <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Sample_type", percent = 0)
+
+Ventaxabee <- coreTaxaITStype$data$'Bee'$taxa
+Ventaxabread <- coreTaxaITStype$data$'Bread'$taxa
+Ventaxaforagers <- coreTaxaITStype$data$'Foragers'$taxa
+Ventaxaleaf <- coreTaxaITStype$data$'Leaf'$taxa
+Ventaxapollen <- coreTaxaITStype$data$'Pollen'$taxa
+
+taxVectortype <- list(Bee=Ventaxabee, Bread=Ventaxabread, Foragers=Ventaxaforagers, Leaf=Ventaxaleaf, Pollen=Ventaxapollen)
+
+#colours
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Sample_type.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectortype, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("pink", "purple", "orange", "green", "yellow"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#black and white a.k.a grey
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Sample_type.BW.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectortype, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("grey10", "grey40", "grey70", "grey90", "grey25"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()  
+  
+  
+######Site  
+  
+#species
+coreTaxaITSsite <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "s", drop.unclassified = FALSE, meta.factor = "Site", percent = 0)
+
+Ventaxacanola <- coreTaxaITSsite$data$'Canola'$taxa
+Ventaxain <- coreTaxaITSsite$data$'IN'$taxa
+VentaxaOliver <- coreTaxaITSsite$data$'Oliver'$taxa
+Ventaxaout <- coreTaxaITSsite$data$'OUT'$taxa
+Ventaxasum2 <- coreTaxaITSsite$data$'Summerland_site2'$taxa
+
+             
+taxVectorsite <- list(Canola=Ventaxacanola, In=Ventaxain, Oliver=VentaxaOliver, Out=Ventaxaout, Sum_site2=Ventaxasum2)
+
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.species.Site.png", sep = ""),
+      width = 2900, height = 2400, units = "px", res = 100)
+
+group.venn(vectors = taxVectorsite, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("pink", "purple", "orange", "green", "yellow"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#genera
+coreTaxaITSsite <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Site", percent = 0)
+
+Ventaxacanola <- coreTaxaITSsite$data$'Canola'$taxa
+Ventaxain <- coreTaxaITSsite$data$'IN'$taxa
+VentaxaOliver <- coreTaxaITSsite$data$'Oliver'$taxa
+Ventaxaout <- coreTaxaITSsite$data$'OUT'$taxa
+Ventaxasum2 <- coreTaxaITSsite$data$'Summerland_site2'$taxa
+
+             
+taxVectorsite <- list(Canola=Ventaxacanola, In=Ventaxain, Oliver=VentaxaOliver, Out=Ventaxaout, Sum_site2=Ventaxasum2)
+
+
+#colours
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Site.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectortype, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("pink", "purple", "orange", "green", "yellow"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#black and white a.k.a grey
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Site.BW.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorsite, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("grey10", "grey40", "grey70", "grey90", "grey25"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()  
+  
+
+######Location  
+  
+#species
+coreTaxaITSlocation <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "s", drop.unclassified = FALSE, meta.factor = "Location", percent = 0)
+
+VentaxaAB <- coreTaxaITSlocation$data$'AB?'$taxa
+VentaxaFraserValley <- coreTaxaITSlocation$data$'Fraser Valley'$taxa
+VentaxaOliver <- coreTaxaITSlocation$data$'Oliver'$taxa
+VentaxaSummerland <- coreTaxaITSlocation$data$'Summerland'$taxa
+
+
+             
+taxVectorlocation <- list(Alberta=VentaxaAB, FrsrVall=VentaxaFraserValley, Oliver=VentaxaOliver, Summrld=VentaxaSummerland)
+
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.species.Location.png", sep = ""),
+      width = 2900, height = 2400, units = "px", res = 100)
+
+group.venn(vectors = taxVectorlocation, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("pink", "purple", "orange", "green"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#genera
+coreTaxaITSlocation <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Location", percent = 0)
+
+VentaxaAB <- coreTaxaITSlocation$data$'AB?'$taxa
+VentaxaFraserValley <- coreTaxaITSlocation$data$'Fraser Valley'$taxa
+VentaxaOliver <- coreTaxaITSlocation$data$'Oliver'$taxa
+VentaxaSummerland <- coreTaxaITSlocation$data$'Summerland'$taxa
+
+
+             
+taxVectorlocation <- list(Alberta=VentaxaAB, FrsrVall=VentaxaFraserValley, Oliver=VentaxaOliver, Summrld=VentaxaSummerland)
+
+
+#colours
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Location.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorlocation, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("pink", "purple", "orange", "green"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#black and white a.k.a grey
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Location.BW.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorlocation, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("grey10", "grey40", "grey70", "grey90"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()    
+ 
+  
+#####Host_Species
+  
+#species
+coreTaxaITShost <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "s", drop.unclassified = FALSE, meta.factor = "Host_Species", percent = 0)
+
+Ventaxaapples <- coreTaxaITShost$data$'Apples'$taxa
+Ventaxablueberry <- coreTaxaITShost$data$'Blueberry'$taxa
+VentaxaCanola <- coreTaxaITShost$data$'Canola'$taxa
+
+             
+taxVectorhost <- list(Apple=Ventaxaapples, Blueberry=Ventaxablueberry, Canola=VentaxaCanola)
+
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.species.Host.png", sep = ""),
+      width = 2900, height = 2400, units = "px", res = 100)
+
+group.venn(vectors = taxVectorhost, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("pink", "purple", "green"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#genera
+coreTaxaITShost <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Host_Species", percent = 0)
+
+Ventaxaapples <- coreTaxaITShost$data$'Apples'$taxa
+Ventaxablueberry <- coreTaxaITShost$data$'Blueberry'$taxa
+VentaxaCanola <- coreTaxaITShost$data$'Canola'$taxa
+
+             
+taxVectorhost <- list(Apple=Ventaxaapples, Blueberry=Ventaxablueberry, Canola=VentaxaCanola)
+
+
+
+#colours
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Host.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorhost, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("pink", "purple", "green"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#black and white a.k.a grey
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.host.BW.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorhost, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("grey10", "grey40", "grey70"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()   
+  
+#####Pooled_NotPooled 
+  
+ #species
+coreTaxaITSpool <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "s", drop.unclassified = FALSE, meta.factor = "Pooled_NotPooled", percent = 0)
+
+Ventaxapooled <- coreTaxaITSpool$data$'P'$taxa
+Ventaxanotpooled <- coreTaxaITSpool$data$'NP'$taxa
+
+
+             
+taxVectorpool <- list(Not_pooled=Ventaxanotpooled, Pooled=Ventaxapooled)
+
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.species.Pooled_NotPooled.png", sep = ""),
+      width = 2900, height = 2400, units = "px", res = 100)
+
+group.venn(vectors = taxVectorpool, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("purple", "green"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#genera
+coreTaxaITSpool <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Pooled_NotPooled", percent = 0)
+
+Ventaxapooled <- coreTaxaITSpool$data$'P'$taxa
+Ventaxanotpooled <- coreTaxaITSpool$data$'NP'$taxa
+
+
+             
+taxVectorpool <- list(Not_pooled=Ventaxanotpooled, Pooled=Ventaxapooled)
+
+
+
+#colours
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Pooled_NotPooled.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorhost, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("purple", "green", "pink"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#black and white a.k.a grey
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Pooled_NotPooled.BW.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorpool, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("grey10", "grey70"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()   
+   
+
+######Province
+  
+
+ #species
+coreTaxaITSprovince <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "s", drop.unclassified = FALSE, meta.factor = "Province", percent = 0)
+
+VentaxaAB <- coreTaxaITSprovince$data$'AB'$taxa
+VentaxaBC <- coreTaxaITSprovince$data$'BC'$taxa
+
+
+             
+taxVectorprovince <- list(AB=VentaxaAB, BC=VentaxaBC)
+
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.species.Province.png", sep = ""),
+      width = 2900, height = 2400, units = "px", res = 100)
+
+group.venn(vectors = taxVectorprovince, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("purple", "green", "pink"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#genera
+coreTaxaITSprovince <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "g", drop.unclassified = FALSE, meta.factor = "Province", percent = 0)
+
+VentaxaAB <- coreTaxaITSprovince$data$'AB'$taxa
+VentaxaBC <- coreTaxaITSprovince$data$'BC'$taxa
+
+
+             
+taxVectorprovince <- list(AB=VentaxaAB, BC=VentaxaBC)
+
+
+#colours
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Province.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorprovince, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("purple", "green", "pink"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+
+#black and white a.k.a grey
+  
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathGB, "ITS1F", ".VennPlot.genera.Province.BW.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorprovince, cat.cex =2, cex = 2, label = FALSE, lab.cex = 2, fill = c("grey10", "grey70"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()   
+     
+  
+        
+######get partition of venn plots 
+
+  library("VennDiagram")
+    
+partitions <- get.venn.partitions(taxVectorMC)
+View(partitions)
+
+#to see all rows
+partitions$..values..
+
+#to see row 1
+partitions$..values..[1]
+
+#rename the list as you want 
+May_June_July <- as.list(partitions$..values..[1])
+May_July <- as.list(partitions$..values..[2])
+May_June <- as.list(partitions$..values..[3])
+May <- as.list(partitions$..values..[4])
+June_July <- as.list(partitions$..values..[5])
+July <- as.list(partitions$..values..[6])
+June <- as.list(partitions$..values..[7])
+
+
+
+#see rows 1 to 3
+partitions$..values..[1:3]
+  
+  
+  #####
+  
+#family
+  
+ coreTaxaITSdate <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "f", drop.unclassified = FALSE, meta.factor = "CollectionDate", percent = 0)
+
+Ventaxamay1 <- coreTaxaITSdate$data$'2017-05-27'$taxa
+Ventaxamay2 <- coreTaxaITSdate$data$'2017-05-17'$taxa
+Ventaxajun1 <- coreTaxaITSdate$data$'2017-06-02'$taxa
+Ventaxajun2 <- coreTaxaITSdate$data$'2017-06-13'$taxa
+Ventaxajun3 <- coreTaxaITSdate$data$'2017-06-19'$taxa
+Ventaxajun4 <- coreTaxaITSdate$data$'2017-06-28'$taxa
+Ventaxajui1 <- coreTaxaITSdate$data$'2017-07-12'$taxa
+
+taxamay <- c(unique(coreTaxaITSdate$data$'2017-05-27'$taxa, coreTaxaITSdate$data$'2017-05-17'$taxa))
+taxajuneAll <- c(unique(fromLast = TRUE, coreTaxaITSdate$data$'2017-06-02'$taxa, coreTaxaITSdate$data$'2017-06-13'$taxa, coreTaxaITSdate$data$'2017-06-19'$taxa, coreTaxaITSdate$data$'2017-06-28'$taxa))
+taxajuly <- coreTaxaITSdate$data$'2017-07-12'$taxa
+             
+taxVectorMC <- list(June_2017=taxajuneAll, July_2017=taxajuly, May_2017=taxamay)
+
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathMC, "ITS", ".VennPlot.family.months.2.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorMC, cat.cex =3, cex = 3, label = FALSE, lab.cex = 3, fill = c("darkorchid1", "aquamarine1", "navajowhite4"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+ 
+#order
+  
+ coreTaxaITSdate <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "o", drop.unclassified = FALSE, meta.factor = "CollectionDate", percent = 0)
+
+Ventaxamay1 <- coreTaxaITSdate$data$'2017-05-27'$taxa
+Ventaxamay2 <- coreTaxaITSdate$data$'2017-05-17'$taxa
+Ventaxajun1 <- coreTaxaITSdate$data$'2017-06-02'$taxa
+Ventaxajun2 <- coreTaxaITSdate$data$'2017-06-13'$taxa
+Ventaxajun3 <- coreTaxaITSdate$data$'2017-06-19'$taxa
+Ventaxajun4 <- coreTaxaITSdate$data$'2017-06-28'$taxa
+Ventaxajui1 <- coreTaxaITSdate$data$'2017-07-12'$taxa
+
+taxamay <- c(unique(coreTaxaITSdate$data$'2017-05-27'$taxa, coreTaxaITSdate$data$'2017-05-17'$taxa))
+taxajuneAll <- c(unique(fromLast = TRUE, coreTaxaITSdate$data$'2017-06-02'$taxa, coreTaxaITSdate$data$'2017-06-13'$taxa, coreTaxaITSdate$data$'2017-06-19'$taxa, coreTaxaITSdate$data$'2017-06-28'$taxa))
+taxajuly <- coreTaxaITSdate$data$'2017-07-12'$taxa
+             
+taxVectorMC <- list(June_2017=taxajuneAll, July_2017=taxajuly, May_2017=taxamay)
+
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathMC, "ITS", ".VennPlot.order.months.2.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorMC, cat.cex =3, cex = 3, label = FALSE, lab.cex = 3, fill = c("darkorchid1", "aquamarine1", "navajowhite4"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+  
+#phylum
+  
+   coreTaxaITSdate <- core.Taxa(data = list(data = tabletemp), is.OTU = TRUE, meta = metatemp, rank = "p", drop.unclassified = FALSE, meta.factor = "CollectionDate", percent = 0)
+
+Ventaxamay1 <- coreTaxaITSdate$data$'2017-05-27'$taxa
+Ventaxamay2 <- coreTaxaITSdate$data$'2017-05-17'$taxa
+Ventaxajun1 <- coreTaxaITSdate$data$'2017-06-02'$taxa
+Ventaxajun2 <- coreTaxaITSdate$data$'2017-06-13'$taxa
+Ventaxajun3 <- coreTaxaITSdate$data$'2017-06-19'$taxa
+Ventaxajun4 <- coreTaxaITSdate$data$'2017-06-28'$taxa
+Ventaxajui1 <- coreTaxaITSdate$data$'2017-07-12'$taxa
+
+taxamay <- c(unique(coreTaxaITSdate$data$'2017-05-27'$taxa, coreTaxaITSdate$data$'2017-05-17'$taxa))
+taxajuneAll <- c(unique(fromLast = TRUE, coreTaxaITSdate$data$'2017-06-02'$taxa, coreTaxaITSdate$data$'2017-06-13'$taxa, coreTaxaITSdate$data$'2017-06-19'$taxa, coreTaxaITSdate$data$'2017-06-28'$taxa))
+taxajuly <- coreTaxaITSdate$data$'2017-07-12'$taxa
+             
+taxVectorMC <- list(June_2017=taxajuneAll, July_2017=taxajuly, May_2017=taxamay)
+
+
+
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(VennPathMC, "ITS", ".VennPlot.phylum.months.2.png", sep = ""),
+      width = 1500, height = 1500, units = "px", res = 100)
+
+group.venn(vectors = taxVectorMC, cat.cex =3, cex = 3, label = FALSE, lab.cex = 3, fill = c("darkorchid1", "aquamarine1", "navajowhite4"), lab.col = "black")
+                 
+# Close the png graph file handle:
+  dev.off()
+  
+ 
+#############
+#           #
+#  ITS2     #
+#           #
+#############
+  
+
+  
+  
+
+  
+```
+
+#Tax abund tables generated at each taxonomic rank
+```{r}
+
+dir.create(paste(pathDataAnGB, "abundTables/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+
+abundTablePath <- paste(pathDataAnGB, "abundTables/", sep = "")
+
+##############
+#            #
+#    ITS1F   #
+#            #
+############## works
+
+tabletemp <- read.table(paste(taxFillPathGB, "ITS1F.table.taxFill.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("taxonomy"="character"))
+#tabletemp$row.names <- NULL if not using tXfilled tables you need it
+ 
+metatemp <-  read.table(paste(pathDataAnGB, "GB_ITS1F.meta.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE)
+
+#metatemp$row.names <- NULL
+
+rownames(metatemp) <- colnames(tabletemp)[-ncol(tabletemp)] #seems to work
+
+tmp <- tax.abund(tabletemp, otu2 = NULL, rank = NULL, drop.unclassified =FALSE, top = NULL, mode = "percent")
+write.table(tmp, file=paste(abundTablePath, "ITS1F.taxab.table.percent.tsv", sep = ""),
+                               append    = FALSE,
+                               sep       = "\t",
+                               row.names = FALSE,
+                               quote=FALSE)
+
+tmp <- tax.abund(tabletemp, otu2 = NULL, rank = NULL, drop.unclassified =FALSE, top = 50, mode = "number")
+write.table(tmp, file=paste(abundTablePath, "ITS1F.taxab.table.top50.number.tsv", sep = ""),
+                               append    = FALSE,
+                               sep       = "\t",
+                               row.names = FALSE,
+                               quote=FALSE)
+
+##############
+#            #
+#    ITS2    #
+#            #
+############## works
+
+
+
+                                 
+```  
+  #group temporal
+  
+```{r}  
+  
+temporalPathMC <- paste(pathDataAnMC, "temporal/", sep = "")
+
+#https://stackoverflow.com/questions/41592862/scale-x-date-remove-extra-month-on-axis-ggplot2-2-2-0-9
+##############
+#            #
+#    ITS     #
+#            #
+##############
+
+tabletemp <- read.table(paste(taxFillPathMC, "ITS.table.taxFill.2.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("taxonomy"="character"))
+#tabletemp$row.names <- NULL if not using tXfilled tables you need it
+ 
+metatemp <-  read.table(paste(pathDataAnMC, "DP_merged_ITS.temporal.meta.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE)
+
+metatemp$row.names <- NULL
+
+rownames(metatemp) <- colnames(tabletemp)[-ncol(tabletemp)] #seems to work
+
+######perform revamp before to obtain taxa
+revamptemp <- data.revamp(data=list(data=tabletemp), is.OTU=TRUE, ranks = ranks, stand.method = "normalize", top = NULL, mode = "number")
+
+revamptemp
+#as.data.frame(revamptemp)
+names(revamptemp)
+names(revamptemp$data_genus)
+View(revamptemp$data_genus)
+
+
+write.table(revamptemp$data_genus, file=paste(revampPathMC, "DP18_datarevamp.ITS.genus.tsv", sep = ""),
+                               append    = FALSE,
+                               sep       = "\t",
+                               row.names = TRUE,
+                               col.names = NA,
+                               quote=FALSE)
+  
+
+getPalette <- colorRampPalette(brewer.pal(9, "Set1"))
+colourCount <- 25
+is.numeric(colourCount) #must be true				
+
+
+#genus
+# Open file-handle to get ready to make the png graph:
+  png(filename=paste(temporalPathMC, "ITS", ".group.temporal.genus.png", sep = ""),
+      width = 2200, height = 1800, units = "px", res = 300)
+
+my.group.temporal(data=tabletemp, meta=metatemp, date.col= "CollectionDate", factors = c("Aspergillus", "Itersonilia", "belongs.to.k.Fungi", "Alternaria", "belongs.to.p.Ascomycota", "Filobasidium", "Epicoccum", "Vishniacozyma", "belongs.to.No.blast.hit", "Mycosphaerella", "Verticillium", "Penicillium", "belongs.to.o.Hypocreales", "Lapidomyces", "belongs.to.o.Pleosporales", "Sporobolomyces", "belongs.to.c.Dothideomycetes", "Arthrocatena", "Lemonniera", "Blumeria", "Taphrina", "Septoriella", "Mycocentrospora", "Rhodotorula", "Fusarium"), group = c("Aspergillus", "Itersonilia", "belongs.to.k.Fungi", "Alternaria", "belongs.to.p.Ascomycota", "Filobasidium", "Epicoccum", "Vishniacozyma", "belongs.to.No.blast.hit", "Mycosphaerella", "Verticillium", "Penicillium", "belongs.to.o.Hypocreales", "Lapidomyces", "belongs.to.o.Pleosporales", "Sporobolomyces", "belongs.to.c.Dothideomycetes", "Arthrocatena", "Lemonniera", "Blumeria", "Taphrina", "Septoriella", "Mycocentrospora", "Rhodotorula", "Fusarium"), rank = "g")
+
+
+# Close the png graph file handle:
+  dev.off() 
+
+  
+#getPalette <- colorRampPalette(brewer.pal(9, "Set1"))
+#colourCount <- 5
+#is.numeric(colourCount) #must be true
+  
+  
+##############
+#            #
+#    ITS2    #
+#            #
+##############  
+
+
+      
+```  
+  
+ #heatmap
+```{r}   
+ 
+dir.create(paste(pathDataAnGB, "heatmap/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+heatPathGB <- paste(pathDataAnGB, "heatmap/", sep = "")
+
+##############
+#            #
+#    ITS     #
+#            #
+############## works
+
+
+tabletemp <- read.table(paste(taxFillPathGB, "ITS1F.table.taxFill.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE, check.names = FALSE, colClasses=c("taxonomy"="character"))
+#tabletemp$row.names <- NULL if not using tXfilled tables you need it
+ 
+metatemp <-  read.table(paste(diversityPathGB, "ITS1F.meta.div.tsv", sep = ""),
+                      sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+                      as.is = TRUE)
+
+metatemp$row.names <- NULL
+
+rownames(metatemp) <- colnames(tabletemp)[-ncol(tabletemp)] #seems to work
+
+
+#group.heatmap.simple
+
+# Open file-handle to get ready to make the png graph:
+png(filename = paste(heatPathGB, "ITS1F", ".heatmapgroup.png", sep = ""), width = 1200, height = 400, units = "px")
+  
+
+#group.heatmap.simple(data=tabletemp, is.OTU=TRUE, meta= metatemp, rank = NULL, row.factor = c("CollectionDate"), top = NULL, drop.unclassified = FALSE, dendro = "row", count = TRUE)
+
+group.heatmap.simple(data=tabletemp, is.OTU=TRUE, meta= metatemp, rank = NULL, row.factor = c("CollectionDate"), top = NULL, drop.unclassified = TRUE, dendro = "row", count = TRUE)
+
+# Close the png graph file handle:
+  dev.off()
+
+
+ 
+ 
+``` 
+ 
+ plot with concentric circles
+ 
+```{r}   
+ #mapping with concentric circles 
+#trying for kinburn ontario with 5km circle  
+
+
+d <- data.frame(lat = c(45.38319), lon = c(-76.201510))
+
+
+library(ggplot2)
+library(ggmap)
+
+lon <- d$lon
+lat <- d$lat
+
+#plot without circle
+mapkinb <- get_map(location = c(lon = mean(d$lon), lat = mean(d$lat)), zoom = 12, 
+                     maptype = "terrain", color = c("bw"))
+
+# Open file-handle to get ready to make the png graph:
+png(filename=paste(pathDataAnMC, "Bees", ".geo.map.png", sep = ""),
+    width = 3000, height = 3500, units = "px", pointsize = 6)
+
+ggmap(mapkinb) +
+  geom_point(data = d, aes(x = lon, y = lat, fill = "black", alpha = 2), size = 9, shape = 19) +
+  guides(fill=FALSE, alpha=FALSE, size=FALSE)
+
+# Close the png graph file handle:
+dev.off()  
+
+
+####add cicrle 
+
+library(ggplot2)
+library(ggmap)
+data = data.frame(
+  ID = as.numeric(c(1)),
+  longitude = as.numeric(c(-76.201510)),
+  latitude = as.numeric(c(45.383139))
+)
+
+
+#################################################################################
+# create circles data frame from the centers data frame
+make_circles <- function(centers, radius, nPoints = 100){
+  # centers: the data frame of centers with ID
+  # radius: radius measured in kilometer
+  #
+  meanLat <- mean(centers$latitude)
+  # length per longitude changes with lattitude, so need correction
+  radiusLon <- radius /111 / cos(meanLat/57.3) 
+  radiusLat <- radius / 111
+  circleDF <- data.frame(ID = rep(centers$ID, each = nPoints))
+  angle <- seq(0,2*pi,length.out = nPoints)
+  
+  circleDF$lon <- unlist(lapply(centers$longitude, function(x) x + radiusLon * cos(angle)))
+  circleDF$lat <- unlist(lapply(centers$latitude, function(x) x + radiusLat * sin(angle)))
+  return(circleDF)
+}
+
+# here is the data frame for all circles
+myCircles <- make_circles(data, 5)
+
+
+
+##################################################################################
+# https://stackoverflow.com/questions/34183049/plot-circle-with-a-certain-radius-around-point-on-a-map-in-ggplot2
+#https://gis.stackexchange.com/questions/119736/ggmap-create-circle-symbol-where-radius-represents-distance-miles-or-km/119858
+#https://www.rdocumentation.org/packages/ggforce/versions/0.1.1/topics/geom_circle
+#http://ggplot2.tidyverse.org/reference/geom_point.html
+
+#data of the dude
+island = get_map(location = c(lon = -63.247593, lat = 17.631598), zoom = 13, maptype = "satellite")
+islandMap = ggmap(island, extent = "panel", legend = "bottomright")
+RL = geom_point(aes(x = longitude, y = latitude), data = data, color = "#ff0000")
+islandMap + RL + 
+  scale_x_continuous(limits = c(-63.280, -63.21), expand = c(0, 0)) + 
+  scale_y_continuous(limits = c(17.605, 17.66), expand = c(0, 0)) +
+  ########### add circles
+  geom_polygon(data = myCircles, aes(lon, lat, group = ID), color = "red", alpha = 0)
+
+#################
+#my data
+
+#get map
+mapkinb <- get_map(location = c(lon = d$lon, lat = d$lat), zoom = 11, 
+                   maptype = "terrain", color = c("bw"))
+
+#plot and have circle
+# Open file-handle to get ready to make the png graph:
+png(filename=paste(pathDataAnMC, "Bees", ".geo.map.circled.png", sep = ""),
+    width = 3000, height = 3500, units = "px", pointsize = 6)
+
+ggmap(mapkinb) +
+  geom_point(data = d, aes(x = lon, y = lat, fill = "black", alpha = 2), size = 15, shape = 19) +
+  guides(fill=FALSE, alpha=FALSE, size=FALSE) + geom_polygon(data = myCircles, aes(lon, lat, group = ID), color = "grey10", alpha = 0.1, size = 3)
+
+# Close the png graph file handle:
+dev.off()  
+
+  
+``` 
+ species query with metaresultextractor
+ 
+ 
+```{r}  
+
+---
+  title: "species.query.marie-claude"
+author: "E.T."
+date: "5/6/2018"
+
+
+#######################
+
+
+dir.create(paste(pathDataAnGB, "Queries/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+WordMatchDir <- paste(pathDataAnGB, "Queries/", sep = "")
+
+
+dir.create(paste(WordMatchDir, "FastaOut/", sep = ""),
+           showWarnings = TRUE,
+           recursive    = FALSE)
+
+
+
+#########################
+#                       #
+#    ITS by species     #
+#                       #
+#########################
+
+
+
+#Define your 6 arguments to run the perl script
+query_in <- paste(WordMatchDir, "speciesQuery.txt", sep = "")
+otu_in <- paste(pathDataAnGB, "GB_ITS1F.table.tsv", sep = "")
+meta_in <- paste(pathDataAnGB, "GB_ITS1F.meta.tsv", sep = "")
+fasta_in <- paste(pathDataAnMC, "ref.seqs.ITS.DP.fasta", sep = "")
+table_taxon_out <- paste(WordMatchDir, "ITS1F_species_query_by_taxon.GB.tsv", sep = "")
+table_sample_out <- paste(WordMatchDir, "ITS1F_species_query_by_sample.GB.tsv", sep = "")
+fasta_out_folder <- paste(WordMatchDir, "/FastaOut/ITS1F_species_query_GB", sep = "")
+
+cmd <- paste("perl", paste(pathDataAnGB, "metaResultExtractorGOOD.pl", sep = ""),
+             query_in,
+             otu_in,
+             meta_in,
+             fasta_in,
+             table_taxon_out,
+             table_sample_out,
+             fasta_out_folder,
+             sep = " ")
+system(cmd)
+
+#then, use the cluster script
+
+
+
+
+
+#########################
+#                       #
+#    ITS by genuses     #
+#                       #
+#########################
+
+#Define your 6 arguments to run the perl script
+query_in <- paste(WordMatchDir, "genusQuery.txt", sep = "")
+otu_in <- paste(pathDataAnGB, "GB_ITS1F.table.tsv", sep = "")
+meta_in <- paste(pathDataAnGB, "GB_ITS1F.meta.tsv", sep = "")
+fasta_in <- paste(pathDataAnGB, "new_refseqs_ITS.fna", sep = "")
+table_taxon_out <- paste(WordMatchDir, "ITS1F_genus_query_by_taxon.tsv", sep = "")
+table_sample_out <- paste(WordMatchDir, "ITS1F_genus_query_by_sample.tsv", sep = "")
+fasta_out_folder <- paste(WordMatchDir, "/FastaOut/ITS1F_genus_query", sep = "")
+
+cmd <- paste("perl", paste(pathDataAnGB, "metaResultExtractorGOOD.pl", sep = ""),
+             query_in,
+             otu_in,
+             meta_in,
+             fasta_in,
+             table_taxon_out,
+             table_sample_out,
+             fasta_out_folder,
+             sep = " ")
+system(cmd)
+
+####
+#more species/genera to the list
+
+#Define your 6 arguments to run the perl script
+query_in <- paste(WordMatchDir, "genus.and.species.quesry.pollen.txt", sep = "")
+otu_in <- paste(pathDataAnMC, "DP_merged_ITS.table.tsv", sep = "")
+meta_in <- paste(pathDataAnMC, "DP_merged_ITS.meta.tsv", sep = "")
+fasta_in <- paste(pathDataAnMC, "ref.seqs.ITS.DP.fasta", sep = "")
+table_taxon_out <- paste(WordMatchDir, "ITS_species_ag.query_by_taxon.MC.pollen.tsv", sep = "")
+table_sample_out <- paste(WordMatchDir, "ITS_species_ag.query_by_sample.MC.pollen.tsv", sep = "")
+fasta_out_folder <- paste(WordMatchDir, "/FastaOut/ITS_species_query_MC_pollen", sep = "")
+
+cmd <- paste("perl", paste(ScriptsPath, "metaResultExtractorGOOD.pl", sep = ""),
+             query_in,
+             otu_in,
+             meta_in,
+             fasta_in,
+             table_taxon_out,
+             table_sample_out,
+             fasta_out_folder,
+             sep = " ")
+system(cmd)
+
+
+#oomycetes
+#more species/genera to the list
+
+#Define your 6 arguments to run the perl script
+query_in <- paste(WordMatchDir, "oomycete.query.pollen.txt", sep = "")
+otu_in <- paste(pathDataAnMC, "DP_merged_OM.table.tsv", sep = "")
+meta_in <- paste(pathDataAnMC, "DP_merged_OM.meta.tsv", sep = "")
+fasta_in <- paste(pathDataAnMC, "OM.ref.seqs.DP.fasta", sep = "")
+table_taxon_out <- paste(WordMatchDir, "omycete_query_by_taxon.MC.pollen.tsv", sep = "")
+table_sample_out <- paste(WordMatchDir, "oomycetes_query_by_sample.MC.pollen.tsv", sep = "")
+fasta_out_folder <- paste(WordMatchDir, "/FastaOut/ITS_species_query_MC_pollen", sep = "")
+
+cmd <- paste("perl", paste(ScriptsPath, "metaResultExtractorGOOD.pl", sep = ""),
+             query_in,
+             otu_in,
+             meta_in,
+             fasta_in,
+             table_taxon_out,
+             table_sample_out,
+             fasta_out_folder,
+             sep = " ")
+system(cmd)
+
+###oom curated
+
+
+#oomycetes
+#more species/genera to the list
+
+#Define your 6 arguments to run the perl script
+query_in <- paste(WordMatchDir, "oomycete.query.pollen.txt", sep = "")
+otu_in <- paste(pathDataAnMC, "DP_merged_OM.curated.tsv", sep = "")
+meta_in <- paste(pathDataAnMC, "DP_merged_OM.meta.tsv", sep = "")
+fasta_in <- paste(pathDataAnMC, "OM.ref.seqs.DP.cur.fasta", sep = "")
+table_taxon_out <- paste(WordMatchDir, "omycete_query_by_taxon.MC.pollen.cur.tsv", sep = "")
+table_sample_out <- paste(WordMatchDir, "oomycetes_query_by_sample.MC.pollen.cur.tsv", sep = "")
+fasta_out_folder <- paste(WordMatchDir, "/FastaOut/ITS_species_query_MC_pollen", sep = "")
+
+cmd <- paste("perl", paste(ScriptsPath, "metaResultExtractorGOOD.pl", sep = ""),
+             query_in,
+             otu_in,
+             meta_in,
+             fasta_in,
+             table_taxon_out,
+             table_sample_out,
+             fasta_out_folder,
+             sep = " ")
+system(cmd)
+
+
+#plants
+#oomycetes
+#more species/genera to the list
+
+#Define your 6 arguments to run the perl script
+query_in <- paste(WordMatchDir, "plants.query.pollen.txt", sep = "")
+otu_in <- paste(pathDataAnMC, "DP_merged_plants.table.tsv", sep = "")
+meta_in <- paste(pathDataAnMC, "DP_merged_plants.meta.tsv", sep = "")
+fasta_in <- paste(pathDataAnMC, "Plants.ref.seqs.DP.fasta", sep = "")
+table_taxon_out <- paste(WordMatchDir, "plants_query_by_taxon.MC.pollen.tsv", sep = "")
+table_sample_out <- paste(WordMatchDir, "plants_query_by_sample.MC.pollen.tsv", sep = "")
+fasta_out_folder <- paste(WordMatchDir, "/FastaOut/plants_species_query_MC_pollen", sep = "")
+
+cmd <- paste("perl", paste(ScriptsPath, "metaResultExtractorGOOD.pl", sep = ""),
+             query_in,
+             otu_in,
+             meta_in,
+             fasta_in,
+             table_taxon_out,
+             table_sample_out,
+             fasta_out_folder,
+             sep = " ")
+system(cmd)
+
+
+
+```

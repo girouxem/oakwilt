@@ -1,0 +1,94 @@
+---
+title: "Practice"
+author: "Emily Giroux"
+date: "9/18/2020"
+output: html_document
+---
+
+Let's run a code:
+```{r}
+sharedPath <- "/isilon/cfia-ottawa-fallowfield/users/girouxeml/PIRL_working_directory"
+analysis <- "oakwilt"
+sharedPathAn <- paste(sharedPath, analysis, sep = "/")
+otuMetaTxt <- paste(sharedPathAn, "OWPlate1_ITS1F.meta.txt", sep = "/")
+testOTU <- paste(sharedPathAn, "GB_ITS1F.table.cut.tsv", sep = "/")
+```
+
+
+```{r}
+install.packages("RAM")
+install.packages("data.table")
+library("RAM")
+library("data.table")
+```
+
+```{r}
+?RAM.input.formatting
+### !!!! Over here!!! rows from row 44865 to end of file had shorter column numbers than the upper half of the table. Removing these from the table solves the problem.
+# test <-  read.table(testOTU, sep = "\t", row.names = 1, header = TRUE, dec = ".", comment.char = "", quote = "", stringsAsFactors = TRUE,
+#                     as.is = TRUE, check.names = FALSE, colClasses=c("row.names"="character", "taxonomy"="character"))
+# 
+# valid.OTU(test)
+
+test <- fread.OTU(testOTU)
+valid.OTU(test)
+tmp <- tax.fill(test, downstream = TRUE)
+
+head(test)
+```
+
+Extracting only the data for samples collected from Michigan and making a plot:
+```{r}
+metatemp <-  read.table(otuMetaTxt, sep = "\t", header = TRUE, dec = ".", comment.char = "", quote = "", 
+                        stringsAsFactors = TRUE, as.is = TRUE)
+
+rownames(metatemp) <- colnames(test)[-ncol(test)] #seems to work
+metatemp2 <- OTU.diversity(list(data=test), metatemp)
+
+# Convert the metadata to a data.table so that we can subset rows - here we want a table with all rows that had CollectedLocation as Michigan:
+dtmetaTemp2 <- as.data.table(metatemp2)
+
+library("data.table")
+setkey(dtmetaTemp2, "CollectedLocation")
+dtmetaTemp2Michigan <- dtmetaTemp2[.(c("Michigan"))]
+
+# Convert the metadata data.table back to a data.frame for RAM analysis (may not be necessary, but just avoid issues for now):
+dfmetaTemp2Michigan <- as.data.frame(dtmetaTemp2Michigan)
+
+row.names(dfmetaTemp2Michigan) <- dfmetaTemp2Michigan$row.names
+row.names(dfmetaTemp2Michigan) <- sub("ITS1F_", "", row.names(dfmetaTemp2Michigan))
+row.names(dfmetaTemp2Michigan) <- gsub("-", "_", row.names(dfmetaTemp2Michigan))
+
+# Get an otu table that has only the michigan samples as per the dfmetaTemp2Michigan metadata table:
+library("tidyverse")
+colnames(test)
+michiganSamples <- dfmetaTemp2Michigan$SampleID
+michiganSamples <- gsub("-", "_",  michiganSamples)
+michiganSamples <- c(michiganSamples, "taxonomy")
+michiganOTU <- test %>% subset(select = michiganSamples)
+
+
+###CollectedLocation
+#species
+# Open file-handle to get ready to make the plot:
+plotPngPath <- paste(sharedPathAn, "ITS1F.gr.abund.species.CollectedLocation.top50.png", sep = "/")
+
+png(filename=plotPngPath, width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=michiganOTU)), rank = "s", top = 50, count = TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 counts of taxonomic groups at the species level", meta = dfmetaTemp2Michigan, meta.factor = c("CollectedLocation"))
+
+# Close the png graph file handle:
+dev.off()
+
+
+tmpMichigan <- tax.fill(michiganOTU, downstream = TRUE)
+plotPngPathTaxFill <- paste(sharedPathAn, "ITS1F.gr.abund.species.CollectedLocation.top50_taxFill.png", sep = "/")
+
+png(filename=plotPngPathTaxFill, width = 5000, height = 3000, units = "px", pointsize = 12, res = 300)
+
+group.abundance.meta(data=(list(data=tmpMichigan)), rank = "s", top = 50, count = TRUE, drop.unclassified = FALSE, cex.x = 10, main = "Top 50 counts of taxonomic groups at the species level", meta = dfmetaTemp2Michigan, meta.factor = c("CollectedLocation"))
+
+# Close the png graph file handle:
+dev.off()
+```
+
