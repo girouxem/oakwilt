@@ -61,13 +61,13 @@ Setting up working directories:
 sharedPath <- "/isilon/cfia-ottawa-fallowfield/users/girouxeml/PIRL_working_directory"
 analysis <- "oakwilt"
 sharedPathAn <- paste(sharedPath, analysis, sep = "/")
+dir.create(sharedPathAn, showWarnings = TRUE, recursive = FALSE)
 imageDirPath <- "/home/CFIA-ACIA/girouxeml/GitHub_Repos/r_environments/oakwilt/"
 dir.create("/home/CFIA-ACIA/girouxeml/GitHub_Repos/r_environments/oakwilt", 
            showWarnings = TRUE, recursive = FALSE)
 baseImage <- "oakwilt.RData"
 save.image(paste(imageDirPath, baseImage, sep = ""))
 ```
-
 Quick image load:
 ```{r}
 imageDirPath <- "/home/CFIA-ACIA/girouxeml/GitHub_Repos/r_environments/oakwilt/"
@@ -90,7 +90,7 @@ metadata$rawWorkingPath <- paste(rawDataWorkingPath, metadata$basename, sep = "/
 for(i in 1:nrow(metadata)){
   cmd[i] <- paste("mkdir -p ",  rawDataWorkingPath, " && tar -xvjf ", metadata$compressedFiles[i], 
                   " -C ", rawDataWorkingPath, sep = "")  
-  system(cmd[i])  
+  system(cmd[i])
 }
 
 metadataITSF_files <- list.files(rawDataWorkingPath, pattern = "ITSF", recursive = TRUE, full.names = TRUE)
@@ -179,13 +179,13 @@ cmd <- paste("itsxpress ",
 Add the path to the trimmed fastq files and a column to set unique sample names based on the filename/sequencing run and sample barcode number:
 ```{r}
 metadataITSF$trimmedPath <- paste(trimmedData, "/ITSF_trimmed.", metadataITSF$barcode, ".fastq", sep = "")
-metadataITSF$sampleID <- paste("ITSF_OAK_2019Plate1", metadataITSF$barcode, sep = "_")
+metadataITSF$SampleID <- paste("ITSF_OAK_2019Plate1", metadataITSF$barcode, sep = "_")
 ```
 
 Create a manifest file that qiime2 will use to import our fastq data and write it to a tsv file:
 ```{r}
 library("data.table")
-manifest <- metadataITSF[, .('sample-id' = sampleID, 'absolute-filepath' = trimmedPath)]
+manifest <- metadataITSF[, .('sample-id' = SampleID, 'absolute-filepath' = trimmedPath)]
 
 write.table(manifest, file = paste(sharedPathAn, "qiime2_import_manifest.tsv", sep = "/"), 
             quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
@@ -247,104 +247,178 @@ cmd <- paste("conda activate qiime2-2020.8 && ",
 suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
 ```
 Export the dada2 results:    
-# Export OTU table
-mkdir phyloseq
-qiime tools export \
---input-path table.qza \
---output-path phyloseq
-
-# Convert biom format to tsv format
-biom convert \
--i phyloseq/feature-table.biom \
--o phyloseq/otu_table.tsv \
---to-tsv
-cd phyloseq
-sed -i '1d' otu_table.tsv
-sed -i 's/#OTU ID//' otu_table.tsv
-cd ../
-
-# Export representative sequences
-qiime tools export \
---input-path rep-seqs.qza \
---output-path phyloseq
 ```{r}
-
-
-
-
-```
-
-
-
-Run dada2 on files, use Marco's script and modify for here:
-```{r}
-library("dada2")
-
-# Unzipped fastq files
-# path <- '/media/2TB_NVMe/pirl_2020-01-15_ITS1F/tmp'
-
-# fnFs <- sort(list.files(path, pattern="_R1_001.fastq", full.names = TRUE))
-# sample.names <- sapply(strsplit(basename(fnFs), "_"), `[`, 1)
-
-# Filter and trim
-# filtFs <- file.path(path, "filtered", paste0(sample.names, "_F_filt.fastq.gz"))
-# names(filtFs) <- sample.names
-# out <- filterAndTrim(fnFs, filtFs, maxN=0, maxEE=2, truncQ=2, minLen=50, 
-#                      compress=TRUE, multithread=TRUE)
-
-# Learn the Error Rates
-# errF <- learnErrors(filtFs, multithread=TRUE)
-
-# Sample Inference
-# dadaFs <- dada(filtFs, err=errF, multithread=TRUE,
-#                HOMOPOLYMER_GAP_PENALTY=-1, BAND_SIZE=32)
-
-# Construct an amplicon sequence variant table (ASV) table
-# seqtab <- makeSequenceTable(dadaFs)
-
-# Track reads through the pipeline
-# getN <- function(x) sum(getUniques(x))
-# track <- cbind(out, sapply(dadaFs, getN))
-# colnames(track) <- c("input", "filtered", "denoisedF")
-# rownames(track) <- sample.names
-# track
-
-# Assign taxonomy
-# taxa <- assignTaxonomy(seqtab, "/media/30tb_raid10/db/UNITE/fasta/UNITE_82.fasta", multithread=TRUE)
-# Phyloseq
-```
-
-
-### Step 5:       
-Run RAM       
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-library("RAM")
-library("data.table")
-
-
-Testing run of kmc:
-```{r}
-prefix <- "kmc_inclusion"
-cmd <- paste("conda activate insilicoPrimer && cd ", sharedPathAn, 
-             " && kmc -k99 -v @", 
-             inclusionPathList, " inclusion ", " . ", 
-             " && conda deactivate", sep = "")
+# Export ASV (OTU-like table) table
+prefix <- "qiimeExport"
+cmd <- paste("conda activate qiime2-2020.8 && ",
+             " mkdir ", paste(sharedPathAn, "phyloseq", sep = "/"),
+             " && qiime tools export ",
+             " --input-path ", paste(qiime2Dir, "/table-dada2.qza", sep = ""),
+             " --output-path ", paste(sharedPathAn, "phyloseq", sep = "/"),
+             " && conda deactivate ", sep = "")
 suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
 ```
+```{r}
+RemoveQsubTempFiles(sharedPathAn, prefix)
+```
+
+```{r}
+# Convert biom format to tsv format
+prefix <- "qiimeBiomConvert"
+cmd <- paste("conda activate qiime2-2020.8 && ",
+             " biom convert ",
+             " -i ", paste(sharedPathAn, "phyloseq", "feature-table.biom", sep = "/"), 
+             " -o ", paste(sharedPathAn, "phyloseq", "otu_table.tsv", sep = "/"),
+             " --to-tsv && cd ", paste(sharedPathAn, "phyloseq", sep = "/"),
+             " && sed -i '1d' otu_table.tsv && sed -i 's/#OTU ID//' otu_table.tsv && cd .. ",
+             " && conda deactivate ", sep = "")
+suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
+```
+```{r}
+RemoveQsubTempFiles(sharedPathAn, prefix)
+```
+
+```{r}
+# Export representative sequences
+prefix <- "qiimeRepSeqsExport"
+cmd <- paste("conda activate qiime2-2020.8 && ",
+             " qiime tools export ",
+             " --input-path ", paste(qiime2Dir, "/rep-seqs-dada2.qza", sep = ""),
+             " --output-path ", paste(sharedPathAn, "phyloseq", sep = "/"),
+             " && conda deactivate ", sep = "")
+suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
+```
+```{r}
+RemoveQsubTempFiles(sharedPathAn, prefix)
+```
+
+
+Set up the qiime2 UNITE database using UNITE 2018-2019 that Marc-o used:
+```{r}
+uniteDBDir2019 <- "/isilon/cfia-ottawa-fallowfield/users/girouxeml/Databases/UNITE_2018-11-18_qiimeReleaseDB"
+```
+
+```{r}
+# Import the UNITE reference sequences into QIIME2.
+prefix <- "qiimeUniteImport"
+cmd <- paste("conda activate qiime2-2020.8 && ",
+             " qiime tools import ",
+             " --type FeatureData[Sequence] ",
+             " --input-path ", paste(uniteDBDir2019, "sh_refs_qiime_ver8_99_02.02.2019.fasta", sep = "/"),
+             " --output-path ", paste(sharedPathAn, "phyloseq", "unite-ver8_99_02.02.2019.qza", sep = "/"),
+             " && conda deactivate ", sep = "")
+suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
+```
+
+
+```{r}
+# Import the taxonomy file.
+prefix <- "qiimeTaxUniteImport"
+cmd <- paste("conda activate qiime2-2020.8 && ",
+             " qiime tools import ",
+             " --type FeatureData[Taxonomy] ",
+             " --input-path ", paste(uniteDBDir2019, "sh_taxonomy_qiime_ver8_99_02.02.2019.txt", sep = "/"),
+             " --output-path ", paste(sharedPathAn, "phyloseq", "unite-ver8-taxonomy_99_02.02.2019.qza", sep = "/"),
+             " --input-format HeaderlessTSVTaxonomyFormat ",
+             " && conda deactivate ", sep = "")
+suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
+```
+
+```{r}
+# Train the classifier
+prefix <- "qiimeTrainUnite"
+cmd <- paste("conda activate qiime2-2020.8 && ",
+             " qiime feature-classifier fit-classifier-naive-bayes ",
+             " --i-reference-reads ", paste(sharedPathAn, "phyloseq", "unite-ver8_99_02.02.2019.qza", sep = "/"), 
+             " --i-reference-taxonomy ", paste(sharedPathAn, "phyloseq", "unite-ver8-taxonomy_99_02.02.2019.qza", sep = "/"),
+             " --o-classifier ", paste(sharedPathAn, "phyloseq", "unite-ver8-classifier_99_02.02.2019.qza", sep = "/"),
+             " && conda deactivate ", sep = "")
+suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
+```
+
+```{r}
+prefix <- "qiimeClassifyFeature"
+cmd <- paste("conda activate qiime2-2020.8 && ",
+             " qiime feature-classifier classify-sklearn ",
+             " --i-classifier ", paste(sharedPathAn, "phyloseq", "unite-ver8-classifier_99_02.02.2019.qza", sep = "/"),
+             " --i-reads ", paste(qiime2Dir, "rep-seqs-dada2.qza", sep = "/"),
+             " --o-classification ", paste(qiime2Dir, "taxonomy-single-end.qza", sep = "/"),
+             " && conda deactivate ", sep = "")
+suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
+```
+```{r}
+prefix <- "qiimeFeatureExport"
+cmd <- paste("conda activate qiime2-2020.8 && ",
+             " qiime tools export ",
+             " --input-path ", paste(qiime2Dir, "taxonomy-single-end.qza", sep = "/"),
+             " --output-path ", paste(sharedPathAn, "phyloseq", sep = "/"),
+             " && conda deactivate ", sep = "")
+suffix <- ".sub"; cat(bashDirections); MakeQsubs(cmd, prefix, suffix)
+```
+
+To get the ASV/OTU tablewith taxonomy column at the end, do we combine the otu_table.tsv and taxonomy.tsv together by feature ID row?
+```{r}
+list.files(path = paste(sharedPathAn, "phyloseq", sep = "/"))
+library(data.table)
+library(phyloseq)
+otuTbl <- fread(paste(sharedPathAn, "phyloseq", "otu_table.tsv", sep = "/"))
+taxTbl <- fread(paste(sharedPathAn, "phyloseq", "taxonomy.tsv", sep = "/"))
+
+
+# Open the taxonomy and change the header. When you open it, you’ll see the header looks like this: 
+# Feature ID	Taxon	Confidence
+# where the spaces are tabs. You need to change it to this:
+# otu-id	taxonomy	Confidence
+
+setnames(taxTbl, "Feature ID", "otu-id")
+setnames(taxTbl, "Taxon", "taxonomy")
+
+setnames(otuTbl, "V1", "otu-id")
+
+setkey(otuTbl, "otu-id")
+setkey(taxTbl, "otu-id")
+
+otuTaxTbl <- merge(otuTbl, taxTbl)
+otuTaxTbl$Confidence <- NULL
+
+write.table(otuTaxTbl, file = paste(sharedPathAn, "otuTax_table.tsv", sep = "/"), 
+            quote = FALSE, sep = "\t", row.names = FALSE, col.names = TRUE)
+```
+
+```{r}
+library("RAM")
+dir.create(paste(sharedPathAn, "taxFill", sep = "/"), showWarnings = TRUE, recursive    = FALSE)
+taxFillPath <- paste(sharedPathAn, "taxFill", sep = "/")
+
+temp <- read.table(paste(sharedPathAn, "otuTax_table.tsv", sep = "/"), sep = "\t", header = TRUE, dec = ".", 
+                   comment.char = "", quote = "", stringsAsFactors = TRUE,
+                   as.is = TRUE, colClasses=c("taxonomy"="character"))
+
+row.names(temp) <- temp$otu.id
+temp$otu.id <- NULL
+
+temp <- tax.fill(temp, downstream=TRUE)
+
+write.table(temp, file=paste(taxFillPath, "ITS1F.table.taxfill.tsv", sep = "/"),
+            append = FALSE, sep = "\t", row.names = FALSE, quote = FALSE)
+```
+
+
+Create diversity directory and path. List your datasets for diversity indexes. Adds a bunch of columns in a new diversity metadata file.
+Indices obtained (in this specific order) are: Spec Number,  Simpson data,  Inv simpson data,	Shannon data,	Simpson eveness,	Shannon eveness,	Simpson true diversity,	shannon true diversity,	chao,	ACE.
+```{r}
+dir.create(paste(sharedPathAn, "diversity", sep = "/"), showWarnings = TRUE, recursive = FALSE)
+diversityPath <- paste(sharedPathAn, "diversity", sep = "/")
+
+metaTemp <- metadataITSF
+rownames(metaTemp) <- colnames(temp)[-ncol(temp)] #seems to work
+temp2 <- OTU.diversity(list(data=temp), metaTemp)
+write.table(temp2, file=paste(diversityPath, "OWPlate1_ITS1F.meta.div.tsv", sep = "/"),
+            append = FALSE, sep = "\t", row.names = FALSE, quote=FALSE)
+```
+
+Save image:
+```{r}
+save.image(paste(imageDirPath, baseImage, sep = ""))
+```
+
