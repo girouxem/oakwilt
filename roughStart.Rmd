@@ -1,0 +1,1052 @@
+---
+title: "oakwilt"
+author: "Emily Giroux"
+date: "2/26/2021"
+output: html_document
+---
+```{r, global_options, eval=TRUE, echo=FALSE, cache=TRUE}
+library("knitr")
+opts_chunk$set(tidy.opts=list(width.cutoff = 80), tidy = TRUE, fig.align = 'center',
+               cache = FALSE, collapse = TRUE, echo = FALSE, eval = FALSE, include = FALSE,
+               message = FALSE, quietly = TRUE, results = 'hide', warn.conflicts = FALSE, 
+               warning = FALSE)
+```
+
+**Using package `BiocManager` to install required packages:**
+```{r, biocInstall, eval=TRUE, echo=TRUE, include=TRUE, cache=TRUE, tidy=FALSE, message=FALSE}
+r <- getOption("repos")
+r["CRAN"] <- "http://cran.us.r-project.org"
+options(repos = r)
+
+if (!requireNamespace("BiocManager"))
+    install.packages("BiocManager")
+BiocManager::install()
+
+library("BiocManager")
+.cran_packages <- c("cowplot", "data.table", "ggplot2", "knitr", "rprojroot")
+.bioc_packages <- c("BiocStyle", "Biostrings", "dada2", 
+                    "ShortRead")
+.inst <- .cran_packages %in% installed.packages()
+if(any(!.inst)) {
+   install.packages(.cran_packages[!.inst])
+}
+.inst <- .bioc_packages %in% installed.packages()
+if(any(!.inst)) {
+  BiocManager::install(.bioc_packages[!.inst], ask = FALSE)
+}
+```
+
+**Load packages into session, and print package versions:**
+```{r, showBiocPackages, echo=TRUE, eval=TRUE, include=TRUE, results='hold', cache=TRUE}
+sapply(c(.cran_packages, .bioc_packages), require, character.only = TRUE)
+```
+
+
+```{r sourcing_my_functions, echo=FALSE, eval=TRUE, include=FALSE, cache=TRUE}
+#Source our custom R scripts:    
+#For this we will use the rprojroot package to set the directory structures. This will help us when finding our files to source functions. We specify ours is an RStudio project. The root object contains a function that will help us locate our package R files regarless of our current working directory.
+library("rprojroot")
+root <- rprojroot::is_rstudio_project
+scriptsPath <- root$make_fix_file(".")("R")
+scripts  <- dir(root$find_file("R", path = root$find_file()))
+scriptsl <- paste(scriptsPath, scripts, sep = "//")
+lapply(scriptsl, source)
+# Record the path to the environment images directory:
+sharedPath <- "/isilon/cfia-ottawa-fallowfield/users/girouxeml/PIRL_working_directory/"
+analysis <- "oakwilt/"
+sharedPathAn <- paste(sharedPath, analysis, sep = "")
+imageDirPath <- "/home/CFIA-ACIA/girouxeml/GitHub_Repos/r_environments/oakwilt/"
+startUpImage <- "oakwilt_RoughCOI.RData"
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+\pagebreak    
+**Load the saved image**
+```{r, loadBaseImage, echo=TRUE, eval=FALSE, include=TRUE, results='hold'}
+load(paste(imageDirPath, startUpImage, sep = ""))
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+
+
+**Create a variable shortcut to the region-specific analysis directory:**    
+In this chapter, we are working with the COI amplicon samples, so the COI directory within our main project directory will contain all the region-specific output.
+```{r, setRegDir, echo=TRUE, eval=FALSE, include=TRUE, cache=TRUE}
+region <- "COI"
+sharedPathReg <- paste(sharedPathAn, region, "_analysis", sep = "")
+if(!dir.exists(sharedPathReg)) dir.create(sharedPathReg)
+
+sharedPathAn  <- sharedPathReg
+dataGZpath <- "/isilon/cfia-ottawa-fallowfield/users/girouxeml/data/raw/Ion_Torrent/pirl_general/R_2021_02_22_07_13_25_user_S5-0143-158-OW_COIF_Plate1partII_2021-02-22/" 
+
+library("data.table")
+metadata <- data.table(
+  Name = "OW_COIF_Plate1partII",
+  rawDataDirPath = dataGZpath,
+  rawFastqTar = "R_2021_02_22_07_13_25_user_S5-0143-158-OW_COIF_Plate1partII_2021-02-22.tar.bz2",
+  rawFastqMd5 = "R_2021_02_22_07_13_25_user_S5-0143-158-OW_COIF_Plate1partII_2021-02-22.tar.bz2.md5",
+  summaryPDFrun = "Auto_user_S5-0143-158-OW_COIF_Plate1partII_2021-02-22_520.pdf",
+  summaryPDFplugin = "Auto_user_S5-0143-158-OW_COIF_Plate1partII_2021-02-22_520-plugins.pdf"
+  )
+
+library("dada2")
+library("ggplot2")
+
+# process untarred fastq in working analysis directory:
+#toUntarFq <- list.files(untar(tarfile = paste(metadata$rawDataDirPath, metadata$rawFastqTar, sep = ""), pattern = "*.fastq"))
+
+library(magrittr)
+library(tidyverse)
+x <- paste(metadata$rawDataDirPath, metadata$rawFastqTar, sep = "")
+list <- untar(x, list = TRUE)
+listfq <- list[grep("fastq", list)]
+untar(x, files = listfq, exdir = paste(sharedPathReg, "rawFastq", sep = "/"))
+
+# Capture files in new metadata table:
+metadataReg <- data.table(region = "COI", 
+                          ionTrunName = "R_2021_02_22_07_13_25_user_S5-0143-158-OW_COIF_Plate1partII_2021-02-22",
+                          fqDirPath = list.files(paste(sharedPathReg, "rawFastq", sep = "/"), full.names = TRUE),
+                          fqPath = list.files(paste(sharedPathReg, "rawFastq", sep = "/"), recursive = TRUE, full.names = TRUE))
+metadataReg$basename <- basename(metadataReg$fqPath)
+metadataReg$shortname <- gsub(pattern = "R_2021_02_22_07_13_25_user_S5-0143-158-OW_COIF_Plate1partII_2021-02-22.", "", metadataReg$basename)
+metadataReg$shortname <- gsub(pattern = ".fastq", "", metadataReg$shortname)
+metadataReg$barcode <- substr(metadataReg$shortname, nchar(metadataReg$shortname)-3+1, nchar(metadataReg$shortname))
+
+# 1. ggPlotRaw COI:
+library("dada2")
+library("ggplot2")
+library("cowplot")
+plotRawQFwd <- dada2::plotQualityProfile(metadataReg$fqPath[1:2])  +
+  ggplot2::ggtitle("Quality Plot of Two Samples of Unprocessed Forward Reads") +
+  ggplot2::theme(plot.title = element_text(hjust = 0.5))
+
+cowplot::plot_grid(plotRawQFwd, nrow = 2)
+```
+**** Over here!!!! Go over how this works and edit for single end reads, and make sure the adapter sequences are being detected and removed properly.
+This is the primer sequence from the file we have on the pirl N-drive "N:\OPL-LPO\Plant Pathology Research\ADMIN\NGSprojects\Primers_design\CSVfolders_NGSbarcodefiles\PIRL_COI_F_96.csv"     
+CGATCCHGAYATRGCHTTYCCHCG
+
+**Checking for Adapter Sequences**     
+We're going to use Cutadapt to detect and trim off COI-specific adapter sequences. Cutadapt uses Biostrings, which only recognises the main IUPAC codes. We need to replace any extended IUPAC nucleic acid ambiguity codes to the primary codes. In our COI primers we see the following ambiguiity codes:           
+D is for A or G or T     
+H is for A or C or T     
+R is for A or G     
+W is for A or T     
+Y is for C or T     
+
+I is from the extended IUPAC codes, and gives a probability order for C, T or G. The closest resemblance to the main IUPAC for I is B.     
+     
+**Note:**     
+There were several sets of COI gene-specific primers listed in an Excel sheet in Ian's folder, and I'm not sure which ones were used for sequencing. Here I just checked which primer sets returned the most hits to see if there was an obvious set used for this sequencing data.     
+
+COI-Invertebrates: Bfrag:
+Befrag-BF: CCIGAYATRGCITTYCCICG = CCBGAYATRGCBTTYCCBCG
+Befrag-R5-R: GTRATIGCICCIGCIARIAC = GTRATBGCBCCBGCBARBAC
+                 Forward Complement Reverse RevComp
+FWD.ForwardReads  142200          0       0       0
+REV.ForwardReads       0          0       0    1675
+          
+**Results of Primer Check:**     
+The most primer hits came from the COI-Invertebrates set Befrag-BF and Befrag-R5-R - processing will continue with this set.      
+      
+
+No changes are required for the forward or reverse primers as there are no extended ambiguity codes in the primer sequences:    
+**Befrag-BF:**     
+     
+>\textcolor{blue}{5'} CCBGAYATRGCBTTYCCBCG \textcolor{blue}{3'}          
+     
+**Befrag-R5-R:**      
+     
+>\textcolor{blue}{5'} GTRATBGCBCCBGCBARBAC \textcolor{blue}{3'}           
+
+
+2. Cutadapt. We are replacing the code for SeqPrep with the use of cutadapt and workflow developed by Benjamin Callahan. See page: https://benjjneb.github.io/dada2/ITS_workflow.html      
+      
+Capture your forward and reverse COI-Invertebrates (Bfrag) primers:
+```{r, recordPrimers, echo=TRUE, eval=TRUE, include=TRUE, tidy=FALSE, cache=TRUE}
+fwdPrimer <- "CCBGAYATRGCBTTYCCBCG"
+revPrimer <- "GTRATBGCBCCBGCBARBAC"
+```
+
+Create the custom `AllOrients' function for primer sequences for all possible orientations. This function was created by Benjamin Callahan for the ITS-specific workflow. See: https://benjjneb.github.io/dada2/ITS_workflow.html      
+```{r, mkAllOrientsFn, echo=TRUE, eval=TRUE, include=TRUE, tidy=FALSE, cache=TRUE}
+library("Biostrings")
+AllOrients   <- function(primer) {
+     require(Biostrings)
+     dna     <- Biostrings::DNAString(primer)
+     orients <- c(Forward    = dna, 
+                  Complement = Biostrings::complement(dna), 
+                  Reverse    = Biostrings::reverse(dna), 
+                  RevComp    = Biostrings::reverseComplement(dna))
+    return(sapply(orients, toString))
+}
+```
+
+We can now use the custom AllOrients function to generate the primer sequences in all possible orientations in which they may be found:
+```{r, runAllOrientsFn, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, cache=TRUE, comment=NA}
+fwdOrients <- AllOrients(fwdPrimer)
+revOrients <- AllOrients(revPrimer)
+fwdOrients
+```
+
+Create the custom `PrimerHits' function for checking our sequences for all orientations of primer sequences as generated above using the AllOrients function. This function generates a table of counts of the number of reads in which the primer is found. This function was created by Benjamin Callahan for the ITS-specific workflow but we can use it here as well. See: https://benjjneb.github.io/dada2/ITS_workflow.html
+```{r, mkPrimerHitsFn, echo=TRUE, eval=TRUE, include=TRUE, tidy=FALSE, cache=TRUE}
+library("ShortRead")
+PrimerHits <- function(primer, fn) {
+    nhits  <- Biostrings::vcountPattern(primer, ShortRead::sread(readFastq(fn)),
+                                        fixed = FALSE)
+    return(sum(nhits > 0))
+}
+```
+Before checking our COI sequences for primers with cutadapt, we need to remove those sequences with ambiguous bases. Ambiguous bases (Ns) in the sequencing reads makes accurate mapping of short primer sequences difficult, so we "pre-filter" these sequences so that we only remove those with Ns and perform no other filtering.
+```{r, filterNsfqs, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE, cache=TRUE}
+library("dada2")
+# Path to the processed fastq file directory:
+processedFastq <- paste(sharedPathReg, "processedFQ", sep = "/")
+if(!dir.exists(processedFastq)) dir.create(processedFastq)
+
+# Path to fastq filtered for ambiguous bases (Ns):
+filtNsPath <- file.path(paste(processedFastq, "/A_removedAmbiguous", sep = ""))
+if(!dir.exists(filtNsPath)) dir.create(filtNsPath)
+
+# Define path and file names:
+fwd   <- metadataReg$fqPath
+filtF <- file.path(paste(filtNsPath, paste(metadataReg$shortname, ".fastq", sep = ""), sep = "/"))
+
+# Run DADA2's filterAndTrim function to remove sequences with ambiguous bases:
+dada2::filterAndTrim(fwd, filtF, maxN = 0, multithread = TRUE, verbose = TRUE)
+```
+
+We can now check the N-filtered sequences of just one sample set for primer hits:
+```{r, cntPrimerHits, echo=TRUE, eval=TRUE, tidy=FALSE, cache=TRUE, message=FALSE, warning=FALSE, comment=NA}
+library("ShortRead")
+rbind(FWD.ForwardReads = sapply(fwdOrients, PrimerHits, fn = filtF[1]),
+      REV.ForwardReads = sapply(revOrients, PrimerHits, fn = filtF[1]))
+```
+As Expected, the vast majority of forward primer is found in its forward orientation, and in some of the reverse reads in its reverse-complement orientation (due to read-through when the COI region is short). Similarly, the reverse primer is found with its expected orientations. There are some where the primers appear in incorrect orientations and I need to better understand this.   
+     
+Set up the paths and fastq file input and output names in preparation for running cutadapt. 
+\textbf{Note:} You may need to install cutadapt locally if it is not installed system wide. I chose to use conda to install it locally:
+```{r, preCutadapt, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE, cache=TRUE}
+cutadapt <- "/home/CFIA-ACIA/girouxeml/prog/anaconda3/envs/bio/bin/cutadapt"
+```
+
+We can use the `system2` call to run shell commands directly from R
+```{r, preCutadapt2, echo=TRUE, eval=TRUE, include=TRUE, tidy=FALSE, cache=TRUE}
+system2(cutadapt, args = "--help")
+```
+
+Create a directory for the cutadapted fastq files, only if it doesn't already exist. Also create the output filenames for the cutadapt-ed fastq files.
+```{r, preCutadapt3, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE, cache=TRUE}
+cutAdaptDir <- file.path(processedFastq, "B_cutadapt", sep = "")
+if(!dir.exists(cutAdaptDir)) dir.create(cutAdaptDir)
+
+cutFqs <- paste(cutAdaptDir, metadataReg$shortname, "_Fcut.fastq", sep = "")
+```
+Now we can proceed to using cutadapt to remove primer sequences at the ends of our reads.     
+We'll use dada2:::rc()      
+     
+An aside:  The ::: is one of 2 possible namespace operators in R. This triple-colon operator acts like a double-colon operator (which selects definitions from a particular namespace), AND allows access to hidden objects. In this command, we are specifying that we want to use the `rc` function that is from the dada2 package, not the `rc` function that may also exist in base R or other packages we possibly loaded. See this page for more on namespace operators in R: http://r-pkgs.had.co.nz/namespace.html      
+     
+In the following, we use dada2:::rc to get the reverse complement of the primer sequences. The idea is that it can be used to compare each sequence and its reverse complement to a reference sequence(s) in the right orientation, and then choose the orientation that minimizes that distance. See page: https://github.com/benjjneb/dada2/issues/451       
+      
+         
+Cutadapt flag parameter explanations:    
+    
+Parameter | Definition
+--------- | -------------------------------------------------------------
+**-g:** | Regular 5' adapter/primer sequence on forward reads
+**-a:** | Regular 3' adapter/primer sequence on forward reads
+**-G:** | Regular 5' adapter/primer sequence on reverse reads
+**-A:** | Regular 3' adapter/primer sequence on reverse reads
+**-p:** | Specify paired-end sequencing reads
+**-o:** | Specify output files
+**-n:** | Number of times to trim when more than one adapter is present in a read
+     
+Documentation for fine-tuning use of cutadapt is available at: https://cutadapt.readthedocs.io/en/v1.7.1/guide.html 
+```{r, cutadapt, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE, cache=TRUE}
+library("dada2")
+fwdPrimerRC <- dada2:::rc(fwdPrimer)
+revPrimerRC <- dada2:::rc(revPrimer)
+# Trim fwdPrimer and the reverse-complement of the revPrimer off forward reads:
+fwdFlags <- paste("-g", fwdPrimer, "-a", revPrimerRC)
+# Run Cutadapt
+for(i in seq_along(metadataReg$shortname)) {
+  system2(cutadapt, args = c(fwdFlags, "-n", 2, "-o", cutFqs[i], filtF[i]))
+}
+```
+\textbf{Note:} There is a lot of output generated to the console when running cutadapt. One warning we may see often is about detection of incomplete adapter sequences:     
+     
+> `WARNING:`     
+>     
+> `One or more of your adapter sequences may be incomplete.`     
+> `Please see the detailed output above.`    
+     
+Because our DNA fragments are generated from amplicon sequences and are not random, we can ignore this warning.     
+     
+As a sanity check, we will count the presence of primers in the first cutadapt-ed sample:
+```{r, cntPrimerHits2, echo=-1, eval=TRUE, include=TRUE, tidy=FALSE, cache=TRUE, comment=NA}
+library("ShortRead")
+rbind(FWD.ForwardReads = sapply(fwdOrients, PrimerHits, fn = cutFqs[1]),
+      REV.ForwardReads = sapply(revOrients, PrimerHits, fn = cutFqs[1]))
+```
+
+3. filterAndTrimming. Raw read processing.          
+If we're going to spend anytime optimizing steps during procesing, it should be on filterring and trimming. Likewise, while we may see a big loss of reads in this step, outside of this step we should see no major loss of reads.     
+      
+Reads less than 60 bp in length will never overlap for this region and are most likely junk reads, so we will be filtering these reads out.        
+We can use the quality plots of the raw reads to guide our trimming and filtering approach. In the plots previously generated we saw that the quality of the forwards reads was much higher than the reverse reads, which is to be expected for Illumina data.  Forward read quality was relatively adequate throughout read length. Reverse read quality dropped off much sooner, with much lower quality after the 180-200 bp mark.  We have the option to truncate our reads in this step, but we need to keep in mind our expected amplicon length for successful merging later on, which depends on a 20-bp overlap between forward and reverse reads.   
+We combine these trimming parameters with standard filtering parameters, the most important being the enforcement of a maximum of 2 expected errors per-read (Edgar and Flyvbjerg 2015). Trimming and filtering is performed on paired reads jointly, i.e. both reads must pass the filter for the pair to pass.     
+When filtering - even if I remove the option to discard reads with >2 error rate, I may still lose samples where no reads remain after filtering. Given the importance stressed by the referenced paper by Edgar and Flyvbjerg 2015 for filtering reads with higher error rates, I kept it, but increased the allowed errors to 3 per read, instead of 2.  We need to accept that some samples will be lost due to poor sequencing data. We will need to update the metadata table so that the lost sets are removed in a later step.     
+    
+```{r, filterAndTrimming, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE, cache=TRUE}
+# Path to the final processed fastq file directory:
+filtPathFinal <- file.path(processedFastq, "C_finalProcessed")
+if(!dir.exists(filtPathFinal)) dir.create(filtPathFinal)
+
+# Create output filenames for the final filtered and trimmed fastq files:
+filtFwd <- paste(filtPathFinal, "/", 
+                 metadataReg$shortname, "_F_filt.fastq", sep = "")
+```
+
+For this dataset, we will use standard filtering paraments: maxN=0 (DADA2 requires sequences contain no Ns), truncQ = 2,  rm.phix = TRUE and maxEE=2. The maxEE parameter sets the maximum number of “expected errors” allowed in a read, which is a better filter than simply averaging quality scores. Note: We enforce a minLen here, to get rid of spurious very low-length sequences.
+      
+Run filterAndTrim using cutadapt-ed fastq files as input:      
+```{r, filterAndTrimming2, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE, linewidth=80, cache=TRUE}
+library("dada2")
+trimOut <- dada2::filterAndTrim(cutFqs, filtFwd, maxN = 0, maxEE = c(3,3), truncQ = 2, minLen = 50, 
+                                compress = TRUE, multithread = TRUE, verbose = TRUE)
+```
+\pagebreak     
+     
+Save the workspace image right after this step so it doesn't have to be repeated if R accidentally shuts down:
+```{r, saveImage2, eval=FALSE, include=TRUE, echo=TRUE}
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+         
+Trimming and filtering parameters explanations:    
+    
+Parameter | Definition
+--------- | -------------------------------------------------------------
+**minLen:** | Remove reads with length less than minLen. minLen is enforced after trimming and truncation.
+**minQ:** | After truncation, reads that contain a quality score less than minQ will be discarded.
+**truncQ:** | Truncate reads at the first instance of a quality score less than or equal to truncQ.
+**maxN:** | After truncation, sequences with more than maxN Ns will be discarded.
+**maxEE:** | After truncation, reads with higher than maxEE "expected errors" will be discarded. Expected errors are calculated from the nominal definition of the quality score: EE = sum(10^(-Q/10))
+**rm.phix:** | If TRUE, discard reads that match against the phiX genome.
+**matchIDs:** | Whether to enforce matching between the id-line sequence identifiers of the forward and reverse fastq files. If TRUE, only paired reads that share id fields are output.
+**compress:** | Ouput fastq files are gzipped.
+**multithread:** | If TRUE, input files are filtered in parallel via mclapply.
+**verbose:** | Whether to output status messages.
+     
+For the full list of available parameters and permitted parameter values see the `filterAndTrim` function in the DADA2 manual page:        
+https://rdrr.io/bioc/dada2/man/filterAndTrim.html      
+     
+4. ggPlotsProcessed. Let's look at the quality plots of our filtered and processed reads for our first 2 samples to see the effects of our trimming parameters:
+```{r, ggPlotsProcessed, eval=TRUE, include=TRUE, echo=TRUE, fig.show='hold', message=FALSE, tidy=FALSE, cache=TRUE}
+library("dada2")
+library("ggplot2")
+plotQfwd <- dada2::plotQualityProfile(paste(filtPathFinal, "/", 
+                                            metadataReg$shortname[1:2], 
+                                            "_F_filt.fastq", sep = "")) +
+  ggplot2::ggtitle("Quality Plot of Two Samples of Processed Forward Reads") +
+  ggplot2::theme(plot.title = element_text(hjust = 0.5))
+
+
+library("cowplot")
+cowplot::plot_grid(plotQfwd, nrow = 1)
+```
+5. keepTrimmed. Update metadata so that samples that did not have any reads that passed filtering are removed from further analysis, to avoid downstream processing errors.   
+     
+We can take a brief look at the summary or reads in and out for the first 6 samples:
+```{r, preKeepTrimmed, eval=TRUE, include=TRUE, echo=TRUE, cache=TRUE, comment=NA}
+head(trimOut)
+```
+\pagebreak      
+     
+We can order the samples by reads remaining after processing with:
+```{r, preKeepTrimmedSorted, eval=TRUE, include=TRUE, echo=TRUE, cache=TRUE, comment=NA}
+head(trimOut[order(-trimOut[,2]),]) 
+```
+The row names we see have retained the fastq file name of the input forward reads, yet the output sums are for both forward and reverse reads. Let's remove the file suffix so that the rownames will apply to both forward and reverse reads.
+```{r, updateRows, include=TRUE, echo=TRUE, eval=FALSE, cache=TRUE}
+rownames(trimOut) <- gsub("_Fcut.fastq", "", rownames(trimOut))
+```
+
+As a precaution, we still check for samples with no remaining reads and update the metadata table for our COI samples using those results. If you receive an error during the dereplication step later on: `Error in open.connection(con, "rb") : cannot open the connection`,
+you need to update the files so that those that didn't pass filtering aren't attempted. See issue at:    
+https://github.com/benjjneb/dada2/issues/375    
+```{r, keepsTrimmed, include=TRUE, echo=TRUE, eval=FALSE, cache=TRUE, tidy=FALSE}
+keepTrim <- trimOut[,"reads.out"] > 20 # Or other cutoff
+
+#keepTrim <- keepTrim[keepTrim =="TRUE"]
+
+#names <- which(keepTrim == TRUE, arr.ind = TRUE)
+
+filtFs <- file.path(filtPathFinal, 
+                    paste(metadataReg$shortname, 
+                          "_F_filt.fastq", sep = ""))[keepTrim]
+
+filtNames <- na.omit(basename(filtFs)[keepTrim]) # Using na.omit removes those that failed the minimum read number after filtering.
+filtNames <- gsub("_F_filt.fastq", "", filtNames)
+```
+
+Run the `keepTrimmed2` chunk. We've updated our list of fastq file names, but we also need to update our metadata table so that rows that had read pairs where a direction no longer had reads after filtering are removed from the metadata table.    
+\textbf{Note:} With `data.table` and `keys` look-up, `.()` is an alias to `list()`, which is the `filtNames` we set in the previous chunk.
+```{r, keepTrimmed2, include=TRUE, echo=TRUE, eval=FALSE, message=FALSE, cache=TRUE, tidy=FALSE}
+library("data.table")
+data.table::setkey(metadataReg, shortname)
+metadatafilt <- metadataReg[.(filtNames)] 
+metadatafilt$filtFwd <- paste(filtPathFinal, "/", metadatafilt$shortname, 
+                              "_F_filt.fastq", sep = "")
+```
+
+6. splitRunsMetadata. No need for this step since all COI sequencing libraries were sequenced on the same run.
+```{r, splitRunsMetadata, include=TRUE, echo=TRUE, eval=FALSE, message=FALSE, cache=TRUE}
+library("data.table")
+# data.table::setkey(metadatafilt, "SeqPlate")
+# run <- unique(metadatafilt$SeqPlate)
+# metadatafiltPlate1 <- metadatafilt[run]
+```
+
+```{r, saveImage3, eval=FALSE, echo=TRUE, include=TRUE}
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+
+7. Error learning.     
+Here we begin the first DADA2-specific processing step: error-learning.  For earror-learning I set randomize to `TRUE`, otherwise it takes the samples in the order they are in the metadata list, until the number of bases are reached, meaning that error will never take into account those generated by specific amplicons that may come later in longer lists.   
+\textbf{Note:} In the case where we have low numbers of merged read pairs compared to processed unmerged sequences, it is suggested to increase `maxMismatch` value during the `mergePairs` step (https://github.com/benjjneb/dada2/issues/648).    
+    
+- errorLearningPool1. Collect the set of filtered fastq files into a list:
+```{r, errorLearningPool1, echo=TRUE, eval=FALSE, cache=TRUE, include=TRUE}
+filtFs <- metadatafilt$filtFwd
+```
+- Extract the names of the fastq files and assign the fastq files using the forward reads as sample name template:
+```{r, valNames1, echo=TRUE, eval=FALSE, cache=TRUE, tidy=FALSE, include=TRUE}
+sampleNamesF <- sapply(strsplit(basename(filtFs), "_F_filt.fastq"), `[`, 1) 
+sampleNames   <- sampleNamesF
+names(filtFs) <- sampleNames
+```
+- Set Rs random number generator:
+```{r, randSeed1, echo=TRUE, eval=FALSE, cache=TRUE, include=TRUE}
+set.seed(100)
+```
+- Learn forward read error rates:
+```{r, pool1Error, echo=TRUE, eval=FALSE, cache=TRUE, tidy=FALSE, include=TRUE}
+library("dada2")
+# Learn forward error rates:
+errF <- dada2::learnErrors(filtFs, nbases = 1e8, randomize = TRUE,
+                           multithread = TRUE, verbose = TRUE)
+```
+```{r, saveImage3, eval=FALSE, echo=TRUE, include=TRUE}
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+We can visualise the estimated error rates as a sanity check:
+```{r, plot1Errors, echo=TRUE, eval=TRUE, include=TRUE, cache=TRUE, tidy=FALSE, message=FALSE, warning=FALSE}
+dada2::plotErrors(errF, nominalQ = TRUE)
+```
+
+- drepDadaPool1. Sample inference of reads:    
+This runs dada2 on the single end reads. It does not require paired-end input to run, see: https://github.com/benjjneb/dada2/issues/795
+```{r, drepDadaPool1, eval=FALSE, echo=TRUE, include=TRUE, cache=TRUE, message=FALSE, tidy=FALSE}
+ddFs <- vector("list", length(sampleNames))
+names(ddFs) <- sampleNames
+
+for(sam in sampleNames) {
+  cat("Processing:", sam, "\n")
+    derepF <- dada2::derepFastq(filtFs[[sam]])
+    ddF    <- dada2::dada(derepF, err = errF, multithread = TRUE, verbose = TRUE)
+    ddFs[[sam]] <- ddF
+}
+rm(derepF)
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+We need to remove those samples that have no remaining reads:
+```{r, remLostSams, echo=TRUE, eval=TRUE, comment=NA, cache=TRUE, include=TRUE}
+# dfToKeep    <- ddFs[sapply(ddFs, function(x) any(x$abundance > 0))]
+# mergersKept <- dfToKeep
+# samNamesKeptMergers <- names(mergersKept)
+
+# See which samples were dropped because they had no remaining reads:
+# names(ddFs[sapply(ddFs, function(x) all(x$abundance == 0))])
+```
+
+Construct sequence table and print it to file:
+```{r, makeSeqTbl1, eval=FALSE, echo=-5, include=TRUE, cache=TRUE, message=FALSE, tidy=FALSE}
+seqTabKept <- dada2::makeSequenceTable(ddFs)
+saveRDS(seqTabKept, paste(sharedPathReg, "/", metadataReg$region[1], 
+                          "_seqtab_KeptSamples.rds", sep = ""))
+rm(seqTabKept)
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+
+9. mergeSplitRuns. \textbf{Note:}    
+This next step is not needed for our COI set since they were all sequenced on the same run.    
+
+10. remChimeric. Remove chimeric sequences from the sequence table.
+```{r, remChimeric, echo=-2, eval=FALSE, cache=TRUE, include=TRUE, tidy=FALSE}
+stAllKept <- readRDS(paste(sharedPathReg, "/", metadataReg$region[1], "_seqtab_KeptSamples.rds", sep = ""))
+seqTabKept <- dada2::removeBimeraDenovo(stAllKept, method = "consensus", multithread = TRUE, verbose = TRUE)
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+# Identified 120 bimeras out of 9868 input sequences.
+```
+
+Let's see how many sequences we lost after removing chimeric sequences:
+```{r, sumsSesChim, echo=-1, eval=TRUE, cache=TRUE, warning=FALSE, message=FALSE, comment=NA, include=TRUE}
+1-sum(seqTabKept)/sum(stAllKept)
+# [1] 0.02233838
+```
+Good - we lost less than 4% when removing chimeric sequences. Also - notice that this number doesn't change if we compare the set with and without the samples with no reads removed, which is what we expect.          
+     
+Overview of counts througout:     
+For this set, we will use the mergers without empty samples removed, so that we can see the reads remaining throughout our pipeline.
+```{r, prntLostSmplsCnts, eval=TRUE, echo=TRUE, cache=TRUE, comment=NA, include=TRUE, message=FALSE}
+library(dada2)
+# Set a simple function:
+GetN <- function(x) sum(getUniques(x))
+# Keep only sample names remaining in seqTabKept
+seqTabKeptNames <- row.names(seqTabKept)
+sampleNamesKept <- intersect(sampleNames, seqTabKeptNames)
+# Keep only rows in trimOut that match value in seqTabKeptNames vector:
+trimOutKept <- subset(trimOut, rownames(trimOut) %in% seqTabKeptNames)
+# Keep only elements in ddFs that are in the seqTabKeptNames vector:
+ddFsKept <- ddFs[seqTabKeptNames]
+# Generate a simple table for tracking:
+summaryTbl <- data.frame(row.names = sampleNamesKept,
+                         input = trimOutKept[,1],
+                         filtered = trimOutKept[,2],
+                         dadaF = sapply(ddFsKept, GetN),
+                         nonchim = rowSums(seqTabKept),
+                         finalPercReadsKept = round(
+                           rowSums(seqTabKept)/trimOutKept[,1]*100, 1))
+rownames(summaryTbl) <- sampleNamesKept
+head(summaryTbl)
+```
+
+Write our tracking results into a csv file:
+```{r, prntReadCnts, eval=TRUE, echo=TRUE, cache=TRUE, comment=NA, include=TRUE}
+write.csv(summaryTbl,
+          file = paste(sharedPathReg, "readCountTracking.csv", sep = "/"),
+          row.names = TRUE)
+
+# Show the samples that have no remaining reads by the end of processing:
+subset(sampleNames, !(sampleNames %in% sampleNamesKept))
+```
+
+Generate a final metadata table that includes only those samples that had reads surviving the processing steps: 
+```{r, newMtdataTbl, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE}
+library("data.table")
+data.table::setkey(metadatafilt, "shortname")
+samples <- sampleNamesKept
+metadataFinal <- metadatafilt[samples]
+
+# Write our final metadata table to a csv file:
+sampleTblName <- "final_processed_metadata"
+write.table(metadataFinal, 
+            paste(sharedPathReg, "/", sampleTblName, ".csv", sep = ""), 
+            sep = ",", row.names = FALSE, quote= FALSE)
+```
+
+```{r}
+coiSetDirPath <- "/isilon/cfia-ottawa-fallowfield/users/girouxeml/Databases/dada2DBs/CO1Classifier-4/"
+coiV4refFasta <- paste(coiSetDirPath, "mydata_ref", "mytrainseq.fasta", sep = "/")
+coiV4refTaxon <- paste(coiSetDirPath, "mydata_ref", "mytaxon.txt", sep = "/")
+coiV4trainedDir <- paste(coiSetDirPath, "mydata_trained", sep = "/")
+```
+
+
+11. assignTax. Assign taxonomy - COI database for COI sequences:    
+```{r, assignTax, echo=-3, eval=FALSE, cache=TRUE, include=TRUE, tidy=FALSE}
+taxTab <- dada2::assignTaxonomy(seqTabKept, refFasta = coiV4refFasta, 
+                                multithread = TRUE, tryRC = TRUE, verbose = TRUE)
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+
+12. Inspect the taxonomic assignments:
+```{r, taxaPrint, echo=TRUE, eval=TRUE, cache=TRUE, comment=NA, include=TRUE}
+taxaPrint <- taxTab  # Removing sequence rownames for display only
+rownames(taxaPrint) <- NULL
+head(taxaPrint)
+```
+
+Extract the standard goods from R:
+```{r, extrctRdata, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE}
+# Let's give our sequence headers more manageable names (ASV_1, ASV_2,...)
+asvSeqs <- colnames(seqTabKept)
+asvHeaders <- vector(dim(seqTabKept)[2], mode = "character")
+for (i in 1:dim(seqTabKept)[2]){
+  asvHeaders[i] <- paste(">ASV", i, sep = "_")
+}
+# Making and writing out a fasta of our final ASV sequences:
+asvFasta <- c(rbind(asvHeaders, asvSeqs))
+write(asvFasta, paste(sharedPathReg, "ASVs.fa", sep = "/"))
+# Write out our count table:
+asvTab <- t(seqTabKept)
+row.names(asvTab) <- sub(">", "", asvHeaders)
+write.table(asvTab, paste(sharedPathReg, "ASVs_counts.txt", sep = "/"),
+            sep = "\t", quote = FALSE, col.names = NA)
+# Write out our tax table:
+asvTax <- taxTab
+row.names(asvTax) <- sub(">", "", asvHeaders)
+write.table(asvTax, paste(sharedPathReg, "ASVs_taxonomy.txt", sep = "/"),
+            sep = "\t", quote = FALSE, col.names = NA)
+```
+
+13. Construct phylogenetic tree   
+Phylogenetic relatedness is commonly used to inform downstream analyses, especially the calculation of phylogeny-aware distances between microbial communities. The DADA2 sequence inference method is reference-free, so we must construct the phylogenetic tree relating the inferred sequence variants de novo. We begin by performing a multiple-alignment using the DECIPHER R package (Wright 2015).   
+```{r, mkTree, echo=-6, eval=FALSE, include=TRUE, tidy=FALSE}
+library("DECIPHER")
+seqs        <- dada2::getSequences(seqTabKept)
+names(seqs) <- seqs # This propagates to the tip labels of the tree
+algn <- DECIPHER::AlignSeqs(Biostrings::DNAStringSet(seqs), 
+                            anchor = NA, verbose = TRUE)
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+
+
+The phangorn R package is then used to construct a phylogenetic tree. Here we first construct a neighbor-joining tree, and then fit a GTR+G+I (Generalized time-reversible with Gamma rate variation) maximum likelihood tree using the neighbor-joining tree as a starting point.
+```{r, phangAlignFitGTR, echo=-17, eval=FALSE, include=TRUE, tidy=FALSE}
+library("phangorn")
+phangAlign <- phangorn::phyDat(as(algn, "matrix"), type = "DNA")
+phangorn::write.phyDat(phangAlign, 
+                       file = paste(sharedPathReg, "alignedSeqs.fasta", sep = "/"),
+                       format = "fasta")
+dm     <- phangorn::dist.ml(phangAlign)
+treeNJ <- phangorn::NJ(dm) # Note, tip order != sequence order
+fit    <- phangorn::pml(treeNJ, data = phangAlign)
+fitGTR <- update(fit, k= 4, inv = 0.2)
+ape::write.tree(fitGTR$tree, file = paste(sharedPathReg, "pre_GTR.phy", sep = "/"))
+
+fitGTR <- phangorn::optim.pml(fitGTR, model = "GTR", optInv = TRUE, 
+                              optGamma = TRUE, rearrangement = "NNI", 
+                              control = pml.control(trace = 0))
+ape::write.tree(fitGTR$tree, file = paste(sharedPathReg, "GTR.phy", sep = "/"))
+detach("package:phangorn", unload=TRUE)
+save.image(paste(imageDirPath, "fitGTR_", startUpImage, sep = ""))
+```
+Use this chunk to run the above 2 chunks as qsubs on the biocluster instead of interactively.
+```{r, phangAlignFitGTRQsub, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE}
+prefix <- paste("B_fitGTRTree_R_mergedSeqPlatesData", region, sep = "_")
+cmd <- paste("load('", paste(imageDirPath, startUpImage, sep = ""), "')\n",
+             'library("phangorn")\n',
+             'seqs       <- dada2::getSequences(seqTabKept)\n',
+             'names(seqs) <- seqs\n',
+             'algn     <- DECIPHER::AlignSeqs(Biostrings::DNAStringSet(seqs), 
+                                              anchor = NA, verbose = TRUE)\n',
+             "save.image('", paste(imageDirPath, 
+                                   "fitGTR_", startUpImage, sep = ""), "')\n",
+             'phangAlign <- phangorn::phyDat(as(algn, "matrix"), type = "DNA")\n',
+             'phangorn::write.phyDat(phangAlign,
+                                     file = paste(sharedPathReg, 
+                                     "alignedSeqs.fasta", sep = "/"),
+                                     format = "fasta")\n',
+             'dm     <- phangorn::dist.ml(phangAlign)\n',
+             'treeNJ <- phangorn::NJ(dm)\n',
+             'fit    <- phangorn::pml(treeNJ, data = phangAlign)\n',
+             'fitGTR <- update(fit, k = 4, inv = 0.2)\n',
+             "ape::write.tree(fitGTR$tree, file = '", 
+                         paste(sharedPathReg, "pre_GTR.phy", 
+                               sep = "/"), "')\n",
+             "save.image('", paste(imageDirPath, "fitGTR_", 
+                                   startUpImage, sep = ""), "')\n",
+             'fitGTR <- phangorn::optim.pml(fitGTR, model = "GTR", 
+                                            optInv = TRUE, optGamma = TRUE, 
+                                            rearrangement = "NNI", 
+                                            control = pml.control(trace = 0))\n',
+             "ape::write.tree(fitGTR$tree, file = '", 
+                              paste(sharedPathReg, "GTR.phy", sep = "/"), "')\n",
+             "save.image('", paste(imageDirPath, 
+                                   "fitGTR_", startUpImage, sep = ""), "')\n",
+             'detach("package:phangorn", unload = TRUE)',
+             sep = "")
+MakeRQsubs(cmd, prefix)
+```
+
+If the above chunk was used to align and get the tree, update the environment once it is done so that the final fitGTR can be updated. To do this, simply load the image that was written in the qsub script in the above chunk.
+```{r, echo=-2, eval=FALSE, include=TRUE, tidy=FALSE}
+load(paste(imageDirPath, "fitGTR_", startUpImage, sep = ""))
+```
+
+14. Combine data into a phyloseq object     
+Collect the data from the sequence table and the metadata table such that they can be linked by a common column called "SampleID", with only those columns we'll require. Then write out this table:
+```{r, makeDFforPhyloseq, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE}
+sampleDatadf <- as.data.frame(metadataFinal)
+sampleDatadf$SampleID <- sampleDatadf$shortname
+
+all(rownames(seqTabKept) %in% sampleDatadf$SampleID)
+
+rownames(sampleDatadf) <- sampleDatadf$SampleID
+colnames(sampleDatadf)
+keepCols <- c("region", "shortname", "barcode", "ionTrunName", "SampleID") 
+
+sampleDataDF <- sampleDatadf[rownames(seqTabKept), keepCols]
+
+# write the sample data dataframe to csv:
+write.table(sampleDataDF, 
+            paste(sharedPathReg, "/", sampleTblName, "_forPhyloseq.txt", sep = ""),
+            sep = "\t", quote = FALSE, col.names = NA)
+```
+
+Prepare the phyloseq objects - one that includes the data obtained from the distance tree, and one that doesn't (in case the distance tree is not yet created):
+```{r, makePhyloseq, echo=-1, eval=FALSE, include=TRUE, tidy=FALSE}
+library("phyloseq")
+# phyloseq object that does not include tree:
+phySeq   <- phyloseq::phyloseq(otu_table(seqTabKept, taxa_are_rows = FALSE),
+                               sample_data(sampleDataDF), 
+                               tax_table(taxTab))
+
+# phyloseq object that DOES include tree:
+ps <- phyloseq::phyloseq(otu_table(seqTabKept, taxa_are_rows = FALSE),
+                         sample_data(sampleDataDF), 
+                         tax_table(taxTab), phy_tree(fitGTR$tree))
+```
+
+The only variable we need to save from the fitGTR image is "ps". Save this individual variable, and then load it with the chptImageB, without all the intermediate variables.
+```{r, finalSave, echo=TRUE, eval=FALSE, include=TRUE, tidy=FALSE}
+# Save the ps variable:
+save(ps, file = paste(imageDirPath, "Rough_COI_March2021ps.Rdata", sep = ""))
+
+# Clear the global environment, including hidden variables:
+rm(list = ls(all.names = TRUE))
+
+# **** Over here!!! 25March2021
+# Re-Load the chptImageB:
+load("/isilon/cfia-ottawa-fallowfield/users/girouxeml/GitHub_Repos/r_environments/oakwilt/oakwilt_RoughCOI.RData")
+
+# Go back and remove all non-essential variables for moving forward, and save this back as the startUpImage. If ever you want to go back for all the data, load the "fitGTR_oakwilt_RoughCOI.RData"
+ls()
+# rm(allnon-essentials)
+
+# Load the ps variable:
+load("/isilon/cfia-ottawa-fallowfield/users/girouxeml/GitHub_Repos/r_environments/oakwilt/Rough_COI_March2021ps.Rdata")
+
+# Save the chptImageB again so it includes the ps variable:
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+
+Let's get familiar with our phyloseq object:     
+Below I am using the ps, rather than phySeq objects. Recall that the phySeq object is a phyloseq object without the fitGTR$tree info, while the ps object was created leveraging the fitGTR$tree information. The phySeq object can be used instead of the ps object if the optim.pml command wasn't run.
+```{r, testCmds, eval=FALSE, include=FALSE, echo=TRUE, message=FALSE}
+library("phyloseq")
+rank_names(ps)
+table(tax_table(ps)[, "Species"], exclude = NULL)
+```
+Here is if we filter based on having to know the species:
+```{r, testCmds2, eval=FALSE, include=FALSE, echo=-5, message=FALSE, comment=NA}
+library("phyloseq")
+ps <- subset_taxa(ps, !is.na(Species) & !Species %in% c("", "uncharacterized"))
+rank_names(ps)
+table(tax_table(ps)[, "Species"], exclude = NULL)
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+
+```{r, taxTblPS, eval=TRUE, echo=-1, cache=TRUE, message=FALSE, warning=FALSE, comment=NA}
+library("phyloseq")
+# table(tax_table(ps)[, "Genus"], exclude = NULL)
+t <- table(tax_table(ps)[, "Genus"], exclude = NULL)
+# head(t[order(-t)])
+t[order(-t)][2:10]
+```
+
+Visualize alpha-diversity, phylum:
+```{r, aDiv1, eval=TRUE, include=TRUE, echo=TRUE, cache=TRUE, message=FALSE}
+library("phyloseq")
+library("ggplot2")
+library("cowplot")
+plot_richness(ps, 
+              x = "region", 
+              measures = c("Shannon", "Simpson"), 
+              color = "region") +
+                theme(axis.text.x = element_text(angle = 90)) +
+  scale_x_discrete(name = "Region")
+dev.copy(png, paste(sharedPathReg, "/aDiv1.png", sep = ""))
+dev.off()
+```
+
+Prevalence evaluation for species:
+```{r, prevTblSpp, echo=TRUE, eval=TRUE, cache=TRUE, results='hold', include=TRUE, tidy=FALSE, message=FALSE, comment=NA}
+library("phyloseq")
+prevDf <- apply(X = otu_table(ps),
+                MARGIN = ifelse(taxa_are_rows(ps), 
+                                yes = 1, no = 2),
+                FUN = function(x){sum(x>0)})
+
+prevDf <- data.frame(Prevalence = prevDf,
+                     TotalAbundance = taxa_sums(ps),
+                     tax_table(ps))
+
+prevalenceTblSpp <- plyr::ddply(prevDf, "Species", 
+                                function(df1){
+                                  cbind(mean(df1$Prevalence),
+                                        sum(df1$Prevalence))})
+colnames(prevalenceTblSpp) <- c("Species", "Mean", "Sum")
+head(prevalenceTblSpp)
+head(prevalenceTblSpp[order(-prevalenceTblSpp[,3]),])
+```
+
+Prevalence evaluation for phyla:
+```{r, prevTblPhyla, echo=TRUE, eval=TRUE, cache=TRUE, include=TRUE, results='hold', tidy=FALSE, message=FALSE, comment=NA}
+library("phyloseq")
+prevDf <- apply(X = otu_table(ps),
+                MARGIN = ifelse(taxa_are_rows(ps), 
+                                yes = 1, no = 2),
+                FUN = function(x){sum(x>0)})
+
+prevDf <- data.frame(Prevalence = prevDf,
+                     TotalAbundance = taxa_sums(ps),
+                     tax_table(ps))
+
+prevalenceTblPhyla <- plyr::ddply(prevDf, "Phylum", 
+                                  function(df1){
+                                    cbind(mean(df1$Prevalence),
+                                          sum(df1$Prevalence))})
+colnames(prevalenceTblPhyla) <- c("Phylum", "Mean", "Sum")
+prevalenceTblPhyla[order(-prevalenceTblPhyla[,3]),]
+```
+
+Filter entries with unidentified Phylum, or those phyla that appear in less than 10 samples:
+```{r, filterLowPhyla, echo=TRUE, include=TRUE, eval=TRUE, tidy=FALSE, cache=TRUE, results='hold', message=FALSE, comment=NA}
+library("phyloseq")
+phylas <- subset(prevalenceTblPhyla, prevalenceTblPhyla$Sum < 10)
+ps1    <- subset_taxa(ps, !Phylum %in% phylas$Phylum)
+rank_names(ps1)
+head(table(tax_table(ps1)[, "Phylum"], exclude = NULL))
+head(table(tax_table(ps1)[, "Species"], exclude = NULL))
+
+t2 <- table(tax_table(ps1)[, "Species"], exclude = NULL)
+t2[order(-t2)][2:10]
+```
+Plot Phylum:
+```{r, plotPhylum, echo=TRUE, eval=TRUE, cache=TRUE, tidy=FALSE, results='hold', include=TRUE, message=FALSE}
+library("phyloseq")
+library("ggplot2")
+prevDf1 <- subset(prevDf, Phylum %in% get_taxa_unique(ps1, "Phylum"))
+ggplot(prevDf1, aes(TotalAbundance, Prevalence / nsamples(ps1),
+                    color = Phylum)) +
+  geom_hline(yintercept = 0.05, alpha = 0.5, linetype = 2) +
+  geom_point(size = 2, alpha = 0.7) +
+  scale_x_log10() + xlab("Total Abundance") + ylab("Prevalence [Frac. Samples]") +
+  facet_wrap(~Phylum) + theme(legend.position = "none")
+dev.copy(png, paste(sharedPathReg, "/plotPhylum.png", sep = ""))
+dev.off()
+```
+Each point in the above plots is a different taxa, Phylum.
+```{r, prevTreshSet, eval=TRUE, echo=TRUE, cache=TRUE, comment=NA}
+prevalenceThreshold = 0.05*nsamples(ps1)
+prevalenceThreshold
+```
+The taxa with a prevalence threshold less than the one set in the above chunk are removed using prune_taxa and put into a new phyloseq object, `ps2`, and we look at the resulting richness plot:
+```{r, taxPrevTresh, echo=TRUE, eval=TRUE, results='hold', cache=TRUE, tidy=FALSE, message=FALSE, comment=NA}
+library("phyloseq")
+keepTaxa <- rownames(prevDf1)[(prevDf1$Prevalence >= prevalenceThreshold)]
+ps2 <- prune_taxa(keepTaxa, ps1)
+rank_names(ps2)
+# table(tax_table(ps2)[, "Phylum"], exclude = NULL)
+# table(tax_table(ps2)[, "Species"], exclude = NULL)
+plot_richness(ps2, 
+              x = "region", 
+              measures = c("Shannon", "Simpson"), 
+              color = "region") +
+                theme(axis.text.x = element_text(angle = 90)) +
+  scale_x_discrete(name = "region")
+dev.copy(png, paste(sharedPathReg, "/taxPrevTresh.png", sep = ""))
+dev.off()
+```
+
+Phylum - curiosity:     
+Curious about the mean and sum prevalence after keeping only taxa passing prevalenceThreshold:
+```{r, prevPhylcheck, eval=TRUE, echo=TRUE, cache=TRUE, tidy=FALSE, message=FALSE, comment=NA}
+library("phyloseq")
+prevDf2 <- apply(X = otu_table(ps2),
+                MARGIN = ifelse(taxa_are_rows(ps2), yes = 1, no = 2),
+                FUN = function(x){sum(x > 0)})
+
+prevDf2 <- data.frame(Prevalence = prevDf2,
+                      TotalAbundance = taxa_sums(ps2),
+                      tax_table(ps2))
+
+prevPhylatblThreshold <- plyr::ddply(prevDf2, "Phylum", 
+                                     function(df1){
+                                       cbind(mean(df1$Prevalence), 
+                                             sum(df1$Prevalence))})
+colnames(prevPhylatblThreshold) <- c("Phylum", "Mean", "Sum")
+prevPhylatblThreshold
+```
+Number of unique phyla, genera and species, across all samples:
+```{r, taxUniqueRanks, echo=TRUE, eval=TRUE, cache=TRUE, comment=NA}
+library("phyloseq")
+uniqueClasses <- c("Phylum", "Genus", "Species")
+for(i in unique(uniqueClasses)) 
+  cat(cat(i), length(phyloseq::get_taxa_unique(ps2, taxonomic.rank = i)), "\n")
+```
+
+The tax_glom function of phyloseq merges species that have the same taxonomy at certain taxonomic rank, using categorical data. The tip_glom function agglomerates tree tips into a single taxa if they are separated by less than a height specified by `h`. 
+```{r, taxGlom, echo=TRUE, eval=TRUE, cache=TRUE}
+library("phyloseq")
+ps3 <- phyloseq::tax_glom(ps2, "Genus", NArm = TRUE)
+h1 = 0.4
+ps4 <- phyloseq::tip_glom(ps2, h = h1)
+```
+
+Below we will look at plots of our trees before agglomeration, with agglomeration using tax_glom, and with agglomeration by tip separation using tip_glom:
+```{r, tipGlom, echo=TRUE, eval=TRUE, cache=TRUE, tidy=FALSE, message=FALSE}
+library("phyloseq")
+library("ggplot2")
+library("gridExtra")
+multiPlotTitleTextSize = 15
+p2Tree <- phyloseq::plot_tree(ps2, method = "treeonly",
+                              ladderize = "left",
+                              title = "Before Agglomeration") +
+  ggplot2::theme(plot.title = element_text(size = multiPlotTitleTextSize))
+
+p3Tree <- phyloseq::plot_tree(ps3, method = "treeonly",
+                              ladderize = "left", title = "By Genus") +
+  ggplot2::theme(plot.title = element_text(size = multiPlotTitleTextSize))
+
+p4Tree <- phyloseq::plot_tree(ps4, method = "treeonly",
+                              ladderize = "left", title = "By Height") +
+  ggplot2::theme(plot.title = element_text(size = multiPlotTitleTextSize))
+gridExtra::grid.arrange(nrow = 1, p2Tree, p3Tree, p4Tree)
+dev.copy(png, paste(sharedPathReg, "/tipGlom.png", sep = ""))
+dev.off()
+```
+
+From here on we will continue using the `ps2` phyloseq object, that has had the `NA', low-abundance, and prevalence threshold filters applied.  
+```{r, plotBar, echo=TRUE, eval=TRUE, cache=TRUE, tidy=FALSE, message=FALSE, comment=NA}
+library("phyloseq")
+phyloseq::plot_bar(ps2, 
+                   x = "barcode", 
+                   fill = "Phylum", 
+                   facet_grid = ~region)
+dev.copy(png, paste(sharedPathReg, "/plotBar.png", sep = ""))
+dev.off()
+```
+
+```{r, plotPhylum2, echo=TRUE, eval=TRUE, cache=TRUE, tidy=FALSE, message=FALSE, comment=NA}
+library("phyloseq")
+library("ggplot2")
+plotPhylum <- phyloseq::plot_bar(ps2, x = "barcode", fill  = "Phylum", 
+                                 facet_grid = ~region) + 
+  ylab("Abundance") + 
+  geom_bar(aes(color = Phylum, fill = Phylum),
+           stat = "identity", position = "stack") 
+
+plotPhylum
+dev.copy(png, paste(sharedPathReg, "/plotPhylum2.png", sep = ""))
+dev.off()
+```
+
+```{r, topTaxPlotsGenus, echo=TRUE, eval=TRUE, cache=TRUE, tidy=FALSE, message=FALSE, comment=NA, warning=FALSE}
+library("phyloseq")
+library("ggplot2")
+
+topGenus    <- names(sort(phyloseq::taxa_sums(ps2), TRUE)[1:6])
+taxTabGenus <- cbind(phyloseq::tax_table(ps2), Genus = NA)
+taxTabGenus[topGenus, "Genus"] <- as(tax_table(ps2)[topGenus, "Genus"],
+                                     "character")
+
+tax_table(ps2) <- phyloseq::tax_table(taxTabGenus)
+ps2m <- merge_samples(ps2, "barcode")
+sample_data(ps2m)$region <- levels(sample_data(ps2)$region)
+ps2m <- phyloseq::transform_sample_counts(ps2m, function(x) 100 * x/sum(x))
+
+ps2mTop = prune_taxa(topGenus, ps2m)
+title = "Figure 1 Top 5 Insect Genera, attempt 1"
+plotGenus <- plot_bar(ps2mTop, 
+                      #x = "Sample", 
+                      fill  = "Genus", 
+                      title = title) + 
+  coord_flip() + 
+  ylab("Percentage of Sequences") + ylim(0, 50) +
+  geom_bar(aes(color = Genus, fill = Genus),
+           stat = "identity", position = "stack") 
+  
+plotGenus
+dev.copy(png, paste(sharedPathReg, "/topTaxPlotsGenus.png", sep = ""))
+dev.off()
+```
+
+```{r, topTaxPlotsSpp, echo=TRUE, eval=TRUE, cache=TRUE, tidy=FALSE, message=FALSE, comment=NA, warning=FALSE}
+library("phyloseq")
+library("ggplot2")
+
+topSpecies <- names(sort(taxa_sums(ps2), TRUE)[1:6])
+taxTabSpp  <- cbind(phyloseq::tax_table(ps2), Species = NA)
+taxTabSpp[topSpecies, "Species"] <- as(phyloseq::tax_table(ps2)[topSpecies, "Species"],
+                                       "character")
+tax_table(ps2) <- phyloseq::tax_table(taxTabSpp)
+ps2mSpp <- phyloseq::merge_samples(ps2, "barcode")
+sample_data(ps2mSpp)$region <- levels(sample_data(ps2)$region)
+ps2mSpp <- phyloseq::transform_sample_counts(ps2mSpp, function(x) 100 * x/sum(x))
+
+ps2mSppTop = prune_taxa(topSpecies, ps2mSpp)
+title = "Figure 2 Top 6 Species, attempt 1"
+plotSpecies <- plot_bar(ps2mSppTop, 
+                        x = "Sample", 
+                        fill = "Species", 
+                        title = title) + 
+  coord_flip() + 
+  ylab("Percentage of Sequences") + ylim(0, 45) +
+  geom_bar(aes(color = Species, fill = Species), 
+           stat = "identity", position = "stack")
+plotSpecies
+dev.copy(png, paste(sharedPathReg, "/topTaxPlotsSpp.png", sep = ""))
+dev.off()
+```
+Below I'm testing what a heatmap would look like for taxa abundance across extraction kits - not applicable
+```{r, plotHeatMap, echo=TRUE, eval=TRUE, cache=TRUE, tidy=FALSE, message=FALSE, comment=NA, warning=FALSE}
+# library("phyloseq")
+# library("ggplot2")
+# heatPlot <- phyloseq::plot_heatmap(ps2mTop, "PCoA", distance="bray", 
+#                                    sample.label="barcode", 
+#                                    taxa.label="Species",
+#                                    low="#66CCFF", high="#000033", na.value="white") +
+#   scale_x_discrete(expand=c(0,0))
+# heatPlot
+```
+
+```{r, barPlotTop20Genus, echo=TRUE, eval=TRUE, message=FALSE, warning=FALSE, tidy=FALSE, cache=TRUE, warning=FALSE}
+library("phyloseq")
+library("ggplot2")
+
+top20 <- names(sort(taxa_sums(ps2), decreasing=TRUE))[1:20]
+ps.top20 <- phyloseq::transform_sample_counts(ps2, function(OTU) OTU/sum(OTU))
+ps.top20 <- phyloseq::prune_taxa(top20, ps.top20)
+
+plotGenus <- phyloseq::plot_bar(ps.top20, x = "barcode", fill = "Genus", 
+                                facet_grid = ~region)
+plotGenus + geom_bar(aes(color = Genus, fill = Genus), 
+                     stat = "identity", 
+                     position = "stack")
+dev.copy(png, paste(sharedPathReg, "/barPlotTopGenus.png", sep = ""))
+dev.off()
+```
+Fo help see:    
+https://www.gdc-docs.ethz.ch/MDA/handouts/MDA20_PhyloseqFormation_Mahendra_Mariadassou.pdf     
+     
+Not yet working:     
+Transform data to proportions as appropriate for Bray-Curtis distances:
+```{r, trnfrmBrayC, eval=TRUE, echo=TRUE, tidy=FALSE, warning=FALSE, error=FALSE, warning=FALSE}
+# library("phyloseq")
+# library("ggplot2")
+# count_to_prop <- function(x) x/sum(x)
+# # psProp <- phyloseq::transformSampleCounts(ps2, function(otu) otu/sum(otu))
+# psProp <- phyloseq::transformSampleCounts(ps2, count_to_prop)
+# # ordNmdsBray1 <- phyloseq::ordinate(psProp, method="NMDS", distance="bray")
+# # sample_sums(psProp)[1:5]
+# 
+# p <- plot_richness(ps, color = "ExtractionKit", x = "ExtractionKit",
+#                    measures = c("Observed", "Chao1", "Shannon", "InvSimpson"))
+# p <- p + geom_boxplot()
+# plot(p)
+# 
+# p <- plot_richness(ps, color = "Sample", x = "Sample",
+#                    measures = c("Observed", "Chao1", "Shannon", "InvSimpson"))
+# p <- p + geom_boxplot()
+# #plot(p)
+# p
+```
+
+```{r}
+# Save the chptImageB again so it includes the ps variable:
+save.image(paste(imageDirPath, startUpImage, sep = ""))
+```
+
